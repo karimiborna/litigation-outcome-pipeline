@@ -1,150 +1,86 @@
 # Scraper Module
 
-Respectful scraper for SF Superior Court civil case data, with NVIDIA NeMo Retriever for PDF text extraction.
+Scrapes SF Superior Court small claims case data via reverse-engineered DataSnap REST API, downloads case PDFs, and extracts text using PyMuPDF with NVIDIA vision API fallback.
 
-## Court Site Structure
+## Data Source
 
-**Base endpoint:** `https://webapps.sftc.org/ci/CaseInfo.dll?&SessionID=<SESSION_ID>`
+The SF Superior Court runs a legacy Delphi DataSnap REST backend behind Cloudflare. Two `.dll` endpoints:
 
-The site uses a session ID in the URL. Tabs navigate via `?CaseNum=<NUM>&SessionID=<SID>#` anchors on the same page.
+| Endpoint | Purpose |
+|---|---|
+| `/cc/CaseCalendar.dll` | Search cases by date, name, or case number |
+| `/ci/CaseInfo.dll` | Fetch documents, parties, and ROA for a specific case |
 
-### Step 1: Search by New Filings (date search)
+### Reverse-Engineered API Endpoints
 
-- Third tab on the search page: "Search by New Filings"
-- Form field: `Filing Date` in `YYYY-MM-DD` format (e.g., `2026-04-01`)
-- Submit the form → returns paginated results (10 per page, can be 100+ entries per day)
-- Results table columns: **Case Number** (clickable link), **Case Title**
-- Pagination at bottom: Previous / 1 / 2 / ... / N / Next
+**Get cases by date:**
+```
+GET /cc/CaseCalendar.dll/datasnap/rest/TServerMethods1/GetCases2/{date}/{case_type}/{session_id}
+```
+- `date` — `YYYY-MM-DD` format
+- `case_type` — `M//CSM` for Small Claims
+- Returns JSON: `{"result": [count, "[{...case objects...}]"]}`
+- `result[0] == -1` → session expired; `== 0` → no cases found
 
-### Step 2: Case Detail Page
+**Get documents for a case:**
+```
+GET /ci/CaseInfo.dll/datasnap/rest/TServerMethods1/GetDocuments/{case_num}/{session_id}/
+```
+- Document URLs are **time-limited signed links** (~10 min expiry)
+- PDFs must be downloaded immediately — URLs cannot be cached
 
-Clicking a case number loads a detail page with 6 tabs:
+### Session Management
 
-1. **Register of Actions** — Date, Proceedings text, Document ("View" link → PDF), Fee
-2. **Parties** — Party name, Party Type (PLAINTIFF/DEFENDANT/APPELLANT/RESPONDENT), Attorneys, Filings links
-3. **Attorneys** — Name, Bar Number, Address/Phone, Parties Represented
-4. **Calendar** — hearing dates (not yet explored)
-5. **Payments** — fee info (not yet explored)
-6. **Documents** — consolidated list: Date, Description (clickable links to PDFs)
+Session IDs are Cloudflare-issued and require browser CAPTCHA. **No programmatic acquisition possible.** User must:
+1. Visit `https://webapps.sftc.org/cc/CaseCalendar.dll` in browser
+2. Copy SessionID from the URL
+3. Export as `SFTC_SESSION_ID` env var
 
-### Step 3: Download PDFs
+Sessions expire after ~10 minutes of inactivity.
 
-- "View" links in Register of Actions and document links in Documents tab point to PDFs
-- **CRITICAL: Document links expire ~10 minutes after page generation** (red warning banner on page)
-- Must download PDFs immediately after loading the case detail page — cannot queue for later
-
-### URL Pattern
-
-Case detail pages: `?CaseNum=<CASE_NUMBER>&SessionID=<SID>#`
-Example: `?CaseNum=APP26008959&SessionID=97F9B63ED07FAE5E8FBB26E84ADF8CAB59F7D04F#`
-
-Note: case number in URL strips the dash (APP-26-008959 → APP26008959).
-
-## Scraping Flow
+## Architecture
 
 ```
-For each date in range:
-  1. POST/GET search form with Filing Date
-  2. Parse result table → list of (case_number, case_title)
-  3. Paginate through all pages
-  4. For each case:
-     a. Load case detail page
-     b. Scrape header metadata (case number, title, cause of action)
-     c. Scrape Parties tab (party names, types, attorneys)
-     d. Scrape Register of Actions (proceedings text, dates)
-     e. Scrape Documents tab → get PDF links
-     f. IMMEDIATELY download all PDFs (links expire in ~10 min)
-     g. Save metadata as JSON, PDFs to data/raw/
-  5. Rate limit between requests (2-3 sec minimum)
+scraper/
+├── config.py          # Constants, env-based settings (ScraperConfig)
+├── session.py         # Session ID validation and error types
+├── court_api.py       # DataSnap REST API client (get_cases, get_documents, download_pdf)
+├── extractor.py       # PDF text extraction (pymupdf + NVIDIA vision fallback)
+├── court_scraper.py   # Main orchestrator (CourtScraper class)
+├── cli.py             # Click CLI entry point
+├── rate_limiter.py    # Request delay + daily cap enforcement
+└── manifest.py        # Resume support (tracks scraped dates/cases)
 ```
 
-## What to Scrape Per Case
+## PDF Text Extraction
 
-| Field | Source Tab | Notes |
-|---|---|---|
-| Case number | Header | e.g., APP26008959 |
-| Case title | Header | Full plaintiff vs defendant string |
-| Cause of action | Header | e.g., TRAFFIC APPEAL, SMALL CLAIMS, etc. |
-| Filing date | Search context | The date used to find this case |
-| Parties | Parties tab | Name, type (plaintiff/defendant), pro per or attorney |
-| Attorneys | Attorneys tab | Name, bar number, firm, party represented |
-| Proceedings | Register of Actions | Date + proceedings text for each entry |
-| Documents (PDFs) | Documents tab / ROA "View" links | Download immediately, links expire |
+Two-tier strategy:
+1. **PyMuPDF** (free, instant) — extracts selectable text. If >100 chars found, done.
+2. **NVIDIA Vision API** (fallback) — renders pages to JPEG at 150 DPI, sends to `meta/llama-3.2-90b-vision-instruct` for OCR. Uses OpenAI-compatible client.
 
-## PDF Document Characteristics
+NVIDIA free tier: ~500 requests/day per key. Most court PDFs have selectable text so quota is preserved.
 
-Court documents are **scanned image PDFs** — not digital/searchable PDFs. Key details:
+## Key Dependencies
 
-- Created by Fujitsu document scanners (PaperStream Capture)
-- No embedded text layer — `pdftotext` returns nothing
-- Typically 1-3 pages, ~50-70KB each
-- Page size: ~614 x 818 pts
-- **OCR is required** for all text extraction — there is no digital text to parse
-- Expect OCR noise: stamps, handwriting, poor scan quality, skewed pages
-- Post-extraction text cleaning will be necessary before feeding into the features pipeline
-
-## NVIDIA NeMo Retriever (PDF Extraction)
-
-**What:** NeMo Retriever Extraction (nv-ingest) — extracts text, tables, charts, and images from PDFs. Runs OCR under the hood, which is essential since all court documents are scanned images.
-
-**Library mode (cloud-hosted, no self-hosting needed):**
-
-```python
-from nv_ingest_client.client.interface import Ingestor
-
-ingestor = Ingestor().files("path/to/case.pdf")
-result = ingestor.extract(
-    extract_text=True,
-    text_depth="page",
-    extract_tables=True,
-    extract_charts=True,
-    extract_images=True
-).ingest()
-```
-
-**Authentication:**
-```bash
-export NVIDIA_BUILD_API_KEY=nvapi-<your key>
-export NVIDIA_API_KEY=nvapi-<your key>
-```
-
-- Get API keys at: https://org.ngc.nvidia.com/setup/api-keys (select NGC Catalog + Public API Endpoints)
-- Cloud endpoint: `integrate.api.nvidia.com`
-- Free tier: ~500+ extractions/day per key
-- Library mode suited for <100 docs per batch
-- Requires Python 3.12
-
-**Scaling:** Each team member generates their own NVIDIA API key. Scraper supports multiple keys and rotates between them, tracking per-key daily usage.
-
-**Docs:** https://docs.nvidia.com/nemo/retriever/25.6.2/extraction/overview/index.html
-
-## Respectful Scraping Rules
-
-These are non-negotiable:
-
-- **Rate limiting** — enforce delays between requests (minimum 2-3 seconds between court site hits)
-- **Retry with backoff** — exponential backoff on 429/5xx responses, do not hammer the server
-- **Respect robots.txt** — check and honor it
-- **User-Agent** — identify as a research/academic scraper, not a generic bot
-- **Session management** — reuse sessions, don't create excessive new ones; handle session expiry gracefully
-- **Error tracking** — log all failures, do not silently retry in tight loops
-- **Daily caps** — configurable max requests per day to the court site
-- **NVIDIA API key rotation** — support multiple keys, distribute load, track per-key usage against ~500/day limit
-- **Resume support** — track what's already been scraped so we never re-scrape or re-extract
+- `requests` — HTTP client (synchronous, rate-limited to 2.5s between calls)
+- `pymupdf` (fitz) — PDF text extraction and page rendering
+- `openai` — NVIDIA vision API client (OpenAI-compatible endpoint)
 
 ## Output
 
-- Raw PDFs → `data/raw/<case_number>/`
-- Case metadata (JSON) → `data/raw/<case_number>/metadata.json`
-- Extracted text → `data/processed/<case_number>/`
-- Scrape manifest/log tracking: date scraped, cases found, PDFs downloaded, extraction status
+```
+data/raw/pdfs/            # Downloaded PDFs (immutable)
+data/processed/extracted/ # Extracted .txt files (one per PDF)
+scraper/state/            # Manifest JSON for resume support
+```
 
-## Key Considerations
+Filename convention: `{case_num}_{sanitized_description}.pdf`
 
-- **DATA EXPIRES AFTER 120 DAYS** — the court site only serves filings from the last 120 days. Scraping must start from the oldest available date (120 days ago) and work forward to the present. Any date older than 120 days is gone forever. This makes the scraper time-sensitive — every day we delay, we lose a day of historical data off the back end.
-- Document links expire ~10 minutes after page load — download PDFs immediately, never queue
-- Session IDs may rotate — scraper must detect expiry and re-acquire
-- Court site uses DataTables (jQuery plugin) for pagination — may need to handle client-side rendering or find the underlying data source
-- Store raw HTML responses before parsing so we can re-parse without re-scraping
-- Keep all credentials (NVIDIA API keys, session tokens) out of code — use environment variables
-- The scraper is the entry point of the entire pipeline — data quality here cascades everywhere
+## Respectful Scraping
+
+- 2.5-second minimum delay between requests
+- 200 requests/day cap (configurable)
+- Academic research User-Agent header
+- Skip weekends (no court dates)
+- Resume support via manifest — never re-scrapes or re-downloads
+- Graceful handling of session expiry
