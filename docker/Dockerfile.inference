@@ -1,0 +1,40 @@
+FROM python:3.12-slim AS base
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir . && \
+    pip install --no-cache-dir \
+        fastapi>=0.110 \
+        uvicorn>=0.29 \
+        mlflow>=2.11 \
+        scikit-learn>=1.4 \
+        sentence-transformers>=2.5 \
+        faiss-cpu>=1.8 \
+        pandas>=2.2 \
+        numpy>=1.26
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY --from=base /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=base /usr/local/bin /usr/local/bin
+
+COPY api/ api/
+COPY models/ models/
+COPY features/ features/
+COPY retrieval/ retrieval/
+COPY counterfactual/ counterfactual/
+COPY data/ data/
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"
+
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]
