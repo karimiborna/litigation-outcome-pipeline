@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -L -D - \"https://webapps.sftc.org/ci/CaseInfo.dll\")",
+      "Bash(curl -s -L -D - \"https://webapps.sftc.org/ci/CaseInfo.dll?CivilFilings\")",
+      "WebSearch",
+      "Bash(curl -s -L -D - \"https://webapps.sftc.org/ci/CaseInfo.dll?SessionID=0&RunFunction=CivilFilings\")",
+      "WebFetch(domain:docs.api.nvidia.com)",
+      "WebFetch(domain:build.nvidia.com)",
+      "WebFetch(domain:sf.courts.ca.gov)",
+      "WebFetch(domain:webapps.sftc.org)",
+      "WebFetch(domain:urlscan.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.nvidia.com)",
+      "WebFetch(domain:forums.developer.nvidia.com)",
+      "WebFetch(domain:www.accessify.com)",
+      "WebFetch(domain:decodethefuture.org)",
+      "WebFetch(domain:web.archive.org)",
+      "Bash(pdftoppm -v)",
+      "Bash(pdfinfo /Users/bornakarimi/Downloads/CaseInfo.pdf)",
+      "Bash(pdftotext /Users/bornakarimi/Downloads/CaseInfo.pdf -)"
+    ]
+  }
+}
