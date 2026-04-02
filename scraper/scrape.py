@@ -20,14 +20,17 @@ from datetime import date
 from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent.parent / ".env", override=True)
 
 from config import (
     BASE_URL, CALENDAR_PATH, CASE_PATH,
     SMALL_CLAIMS_TYPE, USER_AGENT, REQUEST_DELAY_SECS,
 )
 from nvidia_extractor import extract_text
+from session_manager import start_keepalive
 
-MAX_PDFS = 5
+MAX_PDFS = 9999  # no practical limit — scrape the whole day
 
 RAW_DIR = Path(__file__).parent.parent / "data" / "raw" / "pdfs"
 PROCESSED_DIR = Path(__file__).parent.parent / "data" / "processed" / "extracted"
@@ -126,6 +129,7 @@ def main():
     args = parser.parse_args()
 
     session_id = get_session_id()
+    start_keepalive(session_id)
 
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
@@ -156,7 +160,14 @@ def main():
 
         time.sleep(REQUEST_DELAY_SECS)
 
-        docs = get_documents(case_num, session_id)
+        try:
+            docs = get_documents(case_num, session_id)
+        except SessionExpiredError:
+            print("  Session expired — re-acquiring ...")
+            session_id = acquire_session()
+            start_keepalive(session_id)
+            docs = get_documents(case_num, session_id)
+
         if not docs:
             print("  No documents found.")
             continue
@@ -183,6 +194,12 @@ def main():
 
             print(f"  Downloading '{desc}' ...")
             time.sleep(REQUEST_DELAY_SECS)
+
+            # Doc URLs embed the session ID — refresh URL if session was renewed
+            doc_url = doc_url.replace(
+                re.search(r"SessionID=([A-F0-9]+)", doc_url, re.IGNORECASE).group(1),
+                session_id
+            ) if re.search(r"SessionID=([A-F0-9]+)", doc_url, re.IGNORECASE) else doc_url
 
             if download_pdf(doc_url, pdf_path, http):
                 downloaded += 1
