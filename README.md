@@ -27,10 +27,11 @@ scraper → data → features → models → api
 
 ### What's Built
 
-- **Scraper** — fully working. Uses a reverse-engineered DataSnap REST API (JSON endpoints) to fetch cases and documents from the SF Superior Court. PDF text extraction uses PyMuPDF for text-based PDFs (free, instant) with NVIDIA vision API fallback for scanned PDFs.
+- **Scraper** — fully working. Uses a reverse-engineered DataSnap REST API (JSON endpoints) to fetch cases and documents from the SF Superior Court. A **document type whitelist** filters out procedural noise (proof of service, continuances, etc.) and only downloads useful documents (claims, judgments, orders, dismissals). PDF text extraction uses PyMuPDF for text-based PDFs (free, instant) with NVIDIA vision API or local GPU fallback for scanned PDFs. A **targeted extraction prompt** for SC-100 claim forms skips bilingual boilerplate and extracts only filled-in case data.
 - **Case enumerator** — brute-forces case number ranges to discover historical cases that are no longer on the court calendar.
 - **Data layer** — Pydantic schemas, validation, text cleaning, and filesystem storage.
 - **Features module** — LLM prompt templates, feature schemas, and extraction logic (ready to use once data is collected).
+- **Label extraction** — sends outcome documents (judgments, orders, dismissals) to GPT-4o-mini to extract structured labels: outcome (plaintiff win/defendant win/dismissed/settled), amount awarded, whether defendant appeared, attorney presence, and judgment date. Cached to avoid redundant LLM calls.
 - **Models module** — scikit-learn trainers with MLflow tracking (ready to use once features are extracted).
 - **Retrieval module** — sentence-transformers + FAISS index for similar case search.
 - **Counterfactual module** — feature perturbation analysis.
@@ -50,7 +51,7 @@ scrape enumerate --start CSM25870000 --end CSM25879999
 scrape enumerate --start CSM26870000 --end CSM26879999
 ```
 
-After enumeration, run `scrape download-cases` to download PDFs for all valid cases.
+After enumeration, run `scrape download-cases` to download PDFs for all valid cases. Only whitelisted document types are downloaded (see Document Type Filtering below).
 
 ### GPU Text Extraction (Google Colab)
 
@@ -58,20 +59,42 @@ The notebook at `notebooks/colab_gpu_extraction.ipynb` handles the full pipeline
 
 1. Open the notebook in Colab and set **Runtime → Change runtime type → T4 GPU**
 2. It clones the repo (gets `valid_cases.json` with all known case numbers)
-3. Downloads PDFs directly from the court API into Colab (prompts you for a session ID)
-4. Extracts text: PyMuPDF first (free, instant), then **Qwen2-VL-7B** on GPU for scanned pages
-5. Saves to Google Drive (persistent) and/or lets you download a zip
+3. Downloads only whitelisted PDFs from the court API (skips procedural docs)
+4. Extracts text: PyMuPDF first (free, instant), then **Qwen2-VL-7B** on GPU for scanned pages with a targeted prompt for claims
+5. Runs **GPT-4o-mini label extraction** on outcome documents (requires OpenAI API key, ~$0.001/case)
+6. Saves to Google Drive (persistent) and/or lets you download a zip
 
 With `USE_DRIVE = True`, PDFs and text files are saved to your Google Drive so they persist if the Colab runtime disconnects. Set it to `False` to skip Drive and just download the zip at the end.
+
+**Team workflow:** All members use the same shared Drive folder. Set `MY_WORKER`/`TOTAL_WORKERS` in the config cell to split the workload (e.g. 0/3, 1/3, 2/3). The notebook skips cases already downloaded by teammates.
+
+### Document Type Filtering
+
+Not all court documents are useful for prediction. The scraper and Colab notebook filter by a whitelist of 9 document types:
+
+| Document Type | Purpose | Count (63 cases) |
+|---|---|---|
+| CLAIM_OF_PLAINTIFF | Primary input features (narrative, amount, evidence) | 64 |
+| ORDER | Rulings, dismissals | 35 |
+| Notice_of_Entry_of_Judgment | Confirms judgment + amounts | 25 |
+| JUDGMENT_ON_PLAINTIFF_S_CLAIM | Win/loss + exact dollar amounts awarded | 24 |
+| DISMISSAL_OF_ENTIRE_ACTION | Explicit dismissal | 20 |
+| DECLARATION_OF_APPEARANCE | Attorney representation signal | 14 |
+| Small_Claims_Order_of_Dismissal | Court-ordered dismissal | 13 |
+| STIPULATION | Case settled by agreement | 3 |
+| DEFENDANT_S_CLAIM | Counterclaim details | 1 |
+
+Everything else (proof of service, continuances, scheduling, subpoenas, etc.) is skipped. This cuts document count by ~50% and GPU extraction time by ~70-80% since most outcome documents have selectable text and need no OCR.
 
 ### What Needs to Happen Next
 
 1. **Finish enumeration + download** — Complete the remaining case number ranges and run `scrape download-cases` to grab PDFs. Also run `scrape scrape --date <date>` for recent calendar dates.
-2. **Extract features** — Once enough cases are collected, run the LLM feature extraction on the extracted text (requires `LLM_API_KEY` in `.env`).
-3. **Label data** — Determine case outcomes (plaintiff win/loss, monetary result) from the extracted text. This may require manual review or additional parsing.
-4. **Train models** — Use the features module output to train the classifier and regressor via MLflow.
-5. **Build retrieval index** — Embed all case texts and build the FAISS index.
-6. **Deploy** — Containerize and deploy to AWS ECS.
+2. **Extract text** — Run the Colab notebook to OCR scanned PDFs on GPU.
+3. **Extract labels** — The Colab notebook's Step 5 sends outcome documents to GPT-4o-mini and produces `labels.json` with structured outcomes.
+4. **Extract features** — Run LLM feature extraction on claim text (requires `LLM_API_KEY` in `.env`).
+5. **Train models** — Use the features module output + labels to train the classifier and regressor via MLflow.
+6. **Build retrieval index** — Embed all case texts and build the FAISS index.
+7. **Deploy** — Containerize and deploy to AWS ECS.
 
 ### All CLI Commands
 
@@ -375,7 +398,8 @@ litigation-outcome-pipeline/
 │   ├── config.py               # LLM provider settings
 │   ├── prompts.py              # Prompt templates for structured feature extraction
 │   ├── schema.py               # LLMFeatures + FeatureVector (model input)
-│   └── extraction.py           # LLM client, response parsing, caching
+│   ├── extraction.py           # LLM client, response parsing, caching
+│   └── labels.py               # LLM-based label extraction (outcome, award, attorney presence)
 ├── models/
 │   ├── config.py               # MLflow tracking/registry settings
 │   ├── tracking.py             # MLflow helpers (experiments, logging, registry)
