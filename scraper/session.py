@@ -42,12 +42,14 @@ def get_session_id(config: ScraperConfig) -> str:
 
 def prompt_refresh() -> str:
     """Prompt the user for a fresh session ID after expiry."""
+    console.bell()
     console.print("\n[bold red]Session expired.[/bold red]")
     return _prompt_for_session_id()
 
 
 def _prompt_for_session_id() -> str:
     """Show instructions and prompt for a session ID."""
+    console.bell()
     console.print(f"\n{INSTRUCTIONS}\n")
     while True:
         sid = Prompt.ask("[bold]Paste your SessionID[/bold]").strip()
