@@ -1,25 +1,50 @@
 # Data Module
 
-Handles ingestion, storage, validation, and preprocessing of small claims court case data.
+Landing zone and preprocessing for all case data.
 
 ## Structure
 
-- `raw/` — original ingested data (never modified after landing)
-- `processed/` — cleaned and transformed data ready for feature extraction
-- `schemas/` — data validation schemas (e.g., JSON Schema, Pydantic models)
+```
+data/raw/<case_number>/
+    metadata.json      # CaseMetadata schema
+    *.pdf              # raw court PDFs (immutable)
 
-## Responsibilities
+data/processed/<case_number>/
+    *.txt              # extracted text (ExtractedText schema)
 
-- Ingest case data from source (cloud storage: S3 or GCS)
-- Validate incoming data against defined schemas
-- Clean and normalize text fields (case descriptions, rulings)
-- Produce structured records with metadata (claim amount, case type, dates) and raw text fields
-- Maintain separation between raw and processed data stages
+data/features_cache/   # SHA256-keyed feature extraction cache
+data/retrieval_index/  # FAISS index + metadata store
+data/scraped_dates.txt # scraper resume log
+data/manifest.json     # full ScrapeManifest
+```
 
-## Key Considerations
+## File Map
 
-- Raw data is immutable — all transformations produce new files in `processed/`
-- Schema validation should catch malformed records before they enter the pipeline
-- Text fields need consistent encoding and normalization before passing to feature extraction
-- Personally identifiable information (PII) in case text may need redaction
-- Data versioning should be considered for reproducibility
+| File | Purpose |
+|---|---|
+| `schemas/case.py` | Pydantic models — Party, Attorney, CaseMetadata, ExtractedText, ProcessedCase |
+| `cleaning.py` | Text preprocessing — normalize_unicode, remove_ocr_artifacts, collapse_whitespace |
+| `storage.py` | Filesystem helpers — save/load metadata, PDFs, extracted text |
+| `validation.py` | Schema validation — ValidationResult, validate_case_metadata, load_and_validate |
+
+## Key Schema: ProcessedCase
+
+The `ProcessedCase` model is what flows into the features pipeline. It combines:
+- `CaseMetadata` (case number, title, parties, document list)
+- All extracted text from PDFs (joined across pages)
+
+## Key Rules
+
+- **Raw data is immutable** — `data/raw/` is never modified after landing
+- All transformations produce new files in `data/processed/`
+- Pydantic validation runs at every stage boundary
+- PII (party names, addresses) is preserved in raw — redaction decisions deferred to features pipeline
+
+## Cleaning Pipeline
+
+`clean_extracted_text()` runs:
+1. NFKC unicode normalization
+2. OCR artifact removal (stray characters, scanner noise)
+3. Court stamp / header-footer removal
+4. Whitespace collapse
+5. Page break normalization

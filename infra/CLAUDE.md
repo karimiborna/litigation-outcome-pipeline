@@ -1,21 +1,35 @@
-# Infrastructure Module
+# Infra Module
 
-Cloud deployment configuration for AWS or GCP.
+Terraform configuration for AWS deployment.
 
-## Responsibilities
+## Structure
 
-- Define cloud resources for:
-  - **Storage** — S3 bucket or GCS bucket for raw/processed data and MLflow artifacts
-  - **Compute** — ECS task definitions or Cloud Run service configs for API containers
-  - **Networking** — load balancers, security groups, IAM roles as needed
-- Infrastructure-as-code (Terraform, CloudFormation, or deployment scripts)
-- Environment configuration (dev, staging, production)
+```
+infra/
+├── main.tf          # Provider config (AWS)
+├── s3.tf            # S3 buckets — raw data, processed data, MLflow artifacts
+├── ecs.tf           # ECS cluster + task definitions for features + api services
+├── variables.tf     # Input variables
+├── outputs.tf       # Output values (bucket names, service URLs)
+└── envs/
+    ├── dev.tfvars   # Dev environment values
+    └── prod.tfvars  # Prod environment values
+```
 
-## Key Considerations
+## Deploy
 
-- Target platform: AWS (S3 + ECS) or GCP (GCS + Cloud Run) — decide early
-- Keep infra definitions declarative and version-controlled
-- Separate configs per environment (dev/prod)
-- MLflow tracking server may also need cloud hosting
-- Auto-scaling policies for inference services
-- Cost management — use spot/preemptible instances where possible for non-critical workloads
+```bash
+cd infra/
+terraform init
+terraform apply -var-file=envs/prod.tfvars
+```
+
+## Resources Provisioned
+
+- **S3**: data bucket (raw/ + processed/), MLflow artifacts bucket
+- **ECS**: cluster, two task definitions (features service, inference API)
+- **IAM**: task execution roles with S3 read access
+
+## Platform Decision
+
+AWS (S3 + ECS) is the chosen cloud platform. GCP (GCS + Cloud Run) was the alternative.

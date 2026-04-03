@@ -1,23 +1,48 @@
 # Features Module
 
-LLM-based feature extraction and preprocessing pipeline that converts raw case data into structured ML-ready features.
+LLM-based feature extraction — converts raw case text into structured ML signals.
 
-## Responsibilities
+## File Map
 
-- Use an LLM to extract structured signals from unstructured case text:
-  - **Evidence strength** — quality and quantity of supporting evidence
-  - **Contract presence** — whether a written contract is involved
-  - **Argument clarity** — coherence and specificity of legal arguments
-  - Other domain-relevant textual signals
-- Combine LLM-extracted features with structured metadata (claim amount, case type, etc.)
-- Output a unified feature matrix suitable for model training and inference
-- Handle prompt engineering and LLM response parsing
+| File | Purpose |
+|---|---|
+| `extraction.py` | FeatureExtractor class — extract(), extract_batch(), LLM calls, caching |
+| `prompts.py` | LLM prompt templates — FEATURE_EXTRACTION_SYSTEM, build_extraction_prompt() |
+| `schema.py` | LLMFeatures, FeatureVector, to_model_input() |
+| `config.py` | FeaturesConfig (pydantic-settings) — LLM provider, model, caching |
 
-## Key Considerations
+## What Gets Extracted
 
-- LLM is used strictly for feature extraction, NOT for prediction
-- Prompts should produce consistent, parseable structured output (e.g., JSON)
-- Feature extraction should be idempotent — same input always produces same features
-- Cost and latency of LLM calls need to be managed (batching, caching)
-- Feature definitions should be versioned so model training is reproducible
-- Extracted features must be logged/stored for audit and debugging
+| Feature | Type | Scale |
+|---|---|---|
+| evidence_strength | int | 1–5 |
+| contract_present | bool | — |
+| argument_clarity | int | 1–5 |
+| witness_count | int | raw count |
+| timeline_clarity | int | 1–5 |
+| legal_representation | bool | has attorney |
+| counterclaim_present | bool | — |
+| claim_category | str | e.g. "property damage" |
+| claim_amount | float | dollars |
+| ... | | |
+
+Missing info → `null` (never guessed). Nulls → `-1` sentinel when converting to model input.
+
+## Caching
+
+Features are cached by SHA256 hash of the case text. Cache lives in `data/features_cache/`. Re-running on the same case text costs 0 LLM calls.
+
+## LLM Role
+
+The LLM is used **strictly for extraction, not prediction**. It reads case text and fills in a JSON schema. The JSON schema is defined in `schema.py` (LLMFeatures). Temperature is set to 0 for deterministic output.
+
+## Usage
+
+```python
+from features.extraction import FeatureExtractor
+from features.config import FeaturesConfig
+
+extractor = FeatureExtractor(FeaturesConfig())
+vector = extractor.extract(processed_case)
+model_input = vector.to_model_input()  # flat dict of floats
+```

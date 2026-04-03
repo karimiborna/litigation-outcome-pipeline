@@ -1,222 +1,182 @@
 """
-Simple SF small claims scraper.
-Downloads up to MAX_PDFS PDFs for a given date and extracts text via NVIDIA API.
+Standalone scraper — enumerate case numbers then download their PDFs.
 
 Usage:
-    export SFTC_SESSION_ID=<your session id from browser>
-    export NVIDIA_API_KEY=<your key>
-    python scrape.py --date 2026-04-01
+    # Enumerate case numbers starting where Borna left off
+    python scraper/scrape.py --enumerate --start CSM25870100 --end CSM25879999
 
-Session ID: visit https://webapps.sftc.org/cc/CaseCalendar.dll in your browser,
-then copy the SessionID from the URL.
+    # Download all found cases (no text extraction)
+    python scraper/scrape.py --download --no-extract
+
+    # Enumerate then immediately download
+    python scraper/scrape.py --enumerate --start CSM25870100 --end CSM25879999 --download
+
+Session ID: set SFTC_SESSION_ID in .env, or you'll be prompted interactively.
 """
 
+from __future__ import annotations
+
 import argparse
-import json
-import os
-import re
-import time
+import logging
+import sys
 from datetime import date
 from pathlib import Path
 
-import requests
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env", override=True)
 
-from config import (
-    BASE_URL, CALENDAR_PATH, CASE_PATH,
-    SMALL_CLAIMS_TYPE, USER_AGENT, REQUEST_DELAY_SECS,
-)
-from nvidia_extractor import extract_text
-from session_manager import start_keepalive
+from scraper.config import ScraperConfig
+from scraper.court_api import download_pdf, get_documents, sanitize_description
+from scraper.enumerator import CaseEnumerator, ValidCasesStore, parse_case_range
+from scraper.extractor import extract_text
+from scraper.manifest import load_manifest, save_manifest
+from scraper.rate_limiter import RateLimiter
+from scraper.session import SessionExpiredError, get_session_id, prompt_refresh
+from scraper.session_manager import start_keepalive
 
-MAX_PDFS = 9999  # no practical limit — scrape the whole day
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
-RAW_DIR = Path(__file__).parent.parent / "data" / "raw" / "pdfs"
-PROCESSED_DIR = Path(__file__).parent.parent / "data" / "processed" / "extracted"
-
-
-class SessionExpiredError(Exception):
-    pass
+MANIFEST_PATH = Path("scraper/state/manifest.json")
 
 
-def get_session_id() -> str:
-    sid = os.environ.get("SFTC_SESSION_ID", "").strip()
-    if not sid:
-        raise SystemExit(
-            "ERROR: Set SFTC_SESSION_ID env var.\n"
-            "Get it by visiting the court calendar in your browser and copying "
-            "the SessionID from the URL."
-        )
-    return sid
+def run_enumerate(start: str, end: str, config: ScraperConfig, session_id: str) -> None:
+    """Probe a range of case numbers and save valid ones to valid_cases.json."""
+    case_numbers = parse_case_range(start, end)
+    logger.info("Enumerating %d case numbers: %s → %s", len(case_numbers), start, end)
 
+    store = ValidCasesStore()
+    enumerator = CaseEnumerator(config, session_id, store, probe_delay=1.0)
+    stats = enumerator.enumerate(case_numbers)
 
-def get_cases(session_id: str, date_str: str) -> list:
-    url = (
-        f"{BASE_URL}{CALENDAR_PATH}"
-        f"/datasnap/rest/TServerMethods1/GetCases2"
-        f"/{date_str}/{SMALL_CLAIMS_TYPE}/{session_id}"
+    logger.info(
+        "Done. Probed: %d | Found: %d | Total valid: %d",
+        stats["probed"], stats["found"], store.valid_count,
     )
-    resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-
-    if data["result"][0] == -1:
-        raise SessionExpiredError(
-            "Session expired. Get a fresh SessionID from your browser."
-        )
-    if data["result"][0] == 0:
-        return []
-
-    return json.loads(data["result"][1])
 
 
-def parse_case_num(case_num_html: str) -> str:
-    """Extract bare case number (e.g. CSM26871146) from the HTML anchor tag."""
-    match = re.search(r"CaseNum=(\w+)&", case_num_html)
-    return match.group(1) if match else None
+def run_download(config: ScraperConfig, session_id: str, extract: bool) -> None:
+    """Download PDFs for all valid cases in valid_cases.json."""
+    import requests as req
 
+    store = ValidCasesStore()
+    valid = store.valid_cases
 
-def get_documents(case_num: str, session_id: str) -> list:
-    url = (
-        f"{BASE_URL}{CASE_PATH}"
-        f"/datasnap/rest/TServerMethods1/GetDocuments"
-        f"/{case_num}/{session_id}/"
+    if not valid:
+        logger.error("No valid cases found. Run --enumerate first.")
+        sys.exit(1)
+
+    manifest = load_manifest(MANIFEST_PATH)
+    rate_limiter = RateLimiter(
+        min_delay=config.rate_limit_seconds,
+        max_daily=config.max_daily_requests,
     )
-    resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
 
-    if data["result"][0] == -1:
-        raise SessionExpiredError("Session expired.")
-    if data["result"][0] == 0:
-        return []
+    http = req.Session()
+    http.headers.update({"User-Agent": config.user_agent})
 
-    return json.loads(data["result"][1])
+    logger.info("Downloading PDFs for %d cases ...", len(valid))
+    total_pdfs = 0
+    cases_done = 0
 
-
-def download_pdf(doc_url: str, dest: Path, session: requests.Session) -> bool:
-    """Download a PDF to dest. Returns True on success."""
-    try:
-        resp = session.get(doc_url, timeout=60, stream=True)
-        resp.raise_for_status()
-
-        content_type = resp.headers.get("content-type", "")
-        if "pdf" not in content_type.lower():
-            print(f"  Skipping non-PDF response ({content_type})")
-            return False
-
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        with open(dest, "wb") as f:
-            for chunk in resp.iter_content(chunk_size=8192):
-                f.write(chunk)
-
-        print(f"  Downloaded: {dest.name} ({dest.stat().st_size // 1024} KB)")
-        return True
-
-    except Exception as e:
-        print(f"  Download failed: {e}")
-        return False
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Scrape SF small claims PDFs")
-    parser.add_argument(
-        "--date",
-        default=date.today().isoformat(),
-        help="Court date to scrape (YYYY-MM-DD). Defaults to today.",
-    )
-    args = parser.parse_args()
-
-    session_id = get_session_id()
-    start_keepalive(session_id)
-
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-
-    http = requests.Session()
-    http.headers.update({"User-Agent": USER_AGENT})
-
-    print(f"\nFetching small claims cases for {args.date} ...")
-    cases = get_cases(session_id, args.date)
-    print(f"Found {len(cases)} cases on calendar.")
-
-    if not cases:
-        print("No cases found. Try a different date (weekdays only).")
-        return
-
-    downloaded = 0
-
-    for case in cases:
-        if downloaded >= MAX_PDFS:
-            break
-
-        case_num = parse_case_num(case.get("CASE_NUMBER", ""))
-        if not case_num:
+    for case_num in sorted(valid.keys()):
+        if manifest.is_case_scraped(case_num):
+            logger.info("  %s: already done, skipping", case_num)
+            cases_done += 1
             continue
-
-        title = case.get("CASETITLE", "Unknown")
-        print(f"\nCase {case_num}: {title}")
-
-        time.sleep(REQUEST_DELAY_SECS)
 
         try:
-            docs = get_documents(case_num, session_id)
+            rate_limiter.wait()
+            docs = get_documents(case_num, session_id, config)
         except SessionExpiredError:
-            print("  Session expired — re-acquiring ...")
-            session_id = acquire_session()
+            session_id = prompt_refresh()
             start_keepalive(session_id)
-            docs = get_documents(case_num, session_id)
+            rate_limiter.wait()
+            docs = get_documents(case_num, session_id, config)
+
+        case_raw_dir = config.raw_dir / case_num
+        case_proc_dir = config.processed_dir / case_num
+        case_raw_dir.mkdir(parents=True, exist_ok=True)
+        case_proc_dir.mkdir(parents=True, exist_ok=True)
 
         if not docs:
-            print("  No documents found.")
+            logger.info("  %s: no documents", case_num)
+            manifest.mark_case_scraped(case_num, "", date.today(), 0)
+            cases_done += 1
             continue
 
-        print(f"  {len(docs)} document(s) available.")
+        logger.info("  %s: %d document(s)", case_num, len(docs))
+        pdf_count = 0
 
         for doc in docs:
-            if downloaded >= MAX_PDFS:
-                break
-
             desc = doc.get("DESCRIPTION", "doc")
             doc_url = doc.get("URL", "")
             if not doc_url:
                 continue
 
-            # Filename: <case_num>_<sanitized_desc>.pdf
-            safe_desc = re.sub(r"[^\w\-]", "_", desc)[:40]
-            pdf_path = RAW_DIR / f"{case_num}_{safe_desc}.pdf"
+            safe_desc = sanitize_description(desc)
+            pdf_path = case_raw_dir / f"{safe_desc}.pdf"
 
             if pdf_path.exists():
-                print(f"  Already exists, skipping: {pdf_path.name}")
-                downloaded += 1
+                pdf_count += 1
                 continue
 
-            print(f"  Downloading '{desc}' ...")
-            time.sleep(REQUEST_DELAY_SECS)
+            logger.info("    Downloading '%s' ...", desc)
+            rate_limiter.wait()
 
-            # Doc URLs embed the session ID — refresh URL if session was renewed
-            doc_url = doc_url.replace(
-                re.search(r"SessionID=([A-F0-9]+)", doc_url, re.IGNORECASE).group(1),
-                session_id
-            ) if re.search(r"SessionID=([A-F0-9]+)", doc_url, re.IGNORECASE) else doc_url
+            if download_pdf(doc_url, pdf_path, http, config.pdf_download_timeout):
+                pdf_count += 1
 
-            if download_pdf(doc_url, pdf_path, http):
-                downloaded += 1
+                if extract and config.nvidia_api_key:
+                    txt_path = case_proc_dir / f"{safe_desc}.txt"
+                    if not txt_path.exists():
+                        text = extract_text(pdf_path, config.nvidia_api_key)
+                        if text:
+                            txt_path.write_text(text, encoding="utf-8")
+                            logger.info("    Extracted: %s", txt_path.name)
 
-                # Extract text if NVIDIA key is available
-                if os.environ.get("NVIDIA_API_KEY"):
-                    txt_path = PROCESSED_DIR / f"{pdf_path.stem}.txt"
-                    print(f"  Extracting text via NVIDIA API ...")
-                    text = extract_text(pdf_path)
-                    txt_path.write_text(text, encoding="utf-8")
-                    print(f"  Saved: {txt_path.name}")
-                else:
-                    print(f"  Skipping extraction (no NVIDIA_API_KEY set).")
+        manifest.mark_case_scraped(case_num, "", date.today(), pdf_count)
+        if extract and pdf_count > 0:
+            manifest.mark_case_extracted(case_num, pdf_count)
 
-    print(f"\nDone. Downloaded {downloaded} PDF(s).")
-    print(f"  Raw PDFs : {RAW_DIR}")
-    print(f"  Extracted: {PROCESSED_DIR}")
+        total_pdfs += pdf_count
+        cases_done += 1
+
+        if cases_done % 10 == 0:
+            save_manifest(manifest, MANIFEST_PATH)
+            logger.info("Progress: %d/%d cases, %d PDFs", cases_done, len(valid), total_pdfs)
+
+    save_manifest(manifest, MANIFEST_PATH)
+    logger.info("Done. Cases: %d | PDFs: %d", cases_done, total_pdfs)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="SF Small Claims scraper — case number mode")
+    parser.add_argument("--enumerate", action="store_true", help="Probe case number range")
+    parser.add_argument("--start", default="CSM25870100", help="Start case number (default: CSM25870100)")
+    parser.add_argument("--end", default="CSM25879999", help="End case number (default: CSM25879999)")
+    parser.add_argument("--download", action="store_true", help="Download PDFs for all valid cases")
+    parser.add_argument("--no-extract", action="store_true", help="Skip text extraction")
+    args = parser.parse_args()
+
+    if not args.enumerate and not args.download:
+        parser.print_help()
+        sys.exit(1)
+
+    config = ScraperConfig()
+    session_id = get_session_id(config)
+    start_keepalive(session_id)
+
+    try:
+        if args.enumerate:
+            run_enumerate(args.start, args.end, config, session_id)
+
+        if args.download:
+            run_download(config, session_id, extract=not args.no_extract)
+
+    except KeyboardInterrupt:
+        logger.info("\nInterrupted. Progress is saved — re-run to resume.")
+        sys.exit(0)
 
 
 if __name__ == "__main__":

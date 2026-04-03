@@ -1,20 +1,56 @@
 # Models Module
 
-Classification and regression model training for predicting case outcomes.
+Trains and serves two scikit-learn models with MLflow tracking.
 
-## Responsibilities
+## File Map
 
-- Train a **classification model** to predict plaintiff win probability
-- Train a **regression model** to predict expected monetary outcome
-- Consume the unified feature matrix produced by the features module
-- Hyperparameter tuning and model selection
-- Log all experiments, metrics, and artifacts to MLflow
-- Export trained models for registration in the MLflow model registry
+| File | Purpose |
+|---|---|
+| `trainer.py` | ClassifierTrainer, RegressorTrainer, vectors_to_dataframe() |
+| `tracking.py` | MLflow helpers — init, experiments, runs, logging, registry |
+| `config.py` | MLflowConfig — tracking_uri, artifact_root, experiment/model names |
 
-## Key Considerations
+## Two Models
 
-- Two distinct prediction targets: binary outcome (win/lose) and continuous outcome (monetary amount)
-- Models should be compared across experiments using MLflow tracking
-- Feature importance / interpretability is important for downstream explanation generation
-- Train/validation/test splits must be consistent and reproducible
-- Model artifacts are never committed to git — always tracked via MLflow
+**Classifier** — plaintiff win/loss probability
+- Algorithm: GradientBoostingClassifier (200 trees, depth=5, lr=0.1)
+- Output: win probability (0–1) + confidence level
+- Metrics: accuracy, precision, recall, F1, ROC-AUC
+
+**Regressor** — expected monetary outcome
+- Algorithm: GradientBoostingRegressor
+- Output: expected dollar amount
+- Metrics: MAE, RMSE, R²
+
+## MLflow
+
+All training runs are logged to MLflow. Models graduate through stages:
+`None → Staging → Production`
+
+Only Production-stage models are loaded by the API.
+
+```bash
+# Start MLflow server
+mlflow server --config mlflow/server_config.yaml
+
+# UI at http://localhost:5000
+```
+
+Model names in registry:
+- `litigation-win-classifier`
+- `litigation-monetary-regressor`
+
+## Training
+
+```python
+from models.trainer import ClassifierTrainer, RegressorTrainer
+from models.tracking import init_mlflow
+
+init_mlflow()
+clf = ClassifierTrainer()
+clf.train(feature_vectors, labels)  # logs to MLflow automatically
+```
+
+## Key Rule
+
+Model artifacts are **never committed to git** — always loaded from MLflow registry.

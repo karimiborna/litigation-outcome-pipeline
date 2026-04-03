@@ -1,20 +1,39 @@
 # CI/CD Workflows
 
-GitHub Actions workflows for automated testing, validation, building, and deployment.
+Four GitHub Actions workflows automate testing, validation, and deployment.
 
-## Responsibilities
+## Workflows
 
-- **Test** — run unit and integration tests on each push/PR
-- **Lint** — code quality checks (formatting, type checking)
-- **Data validation** — verify data schemas and integrity on data changes
-- **Docker build** — build and push container images on merge to main
-- **Deploy** — deploy updated services to cloud infrastructure (ECS / Cloud Run)
+**`ci.yml`** — Runs on every PR
+- Lint with ruff
+- Type check with mypy
+- Run all unit tests (pytest)
+- Fails PR if any step fails
 
-## Key Considerations
+**`data-validation.yml`** — Runs on push to main
+- Validates data schemas
+- Checks that raw/processed data structure is intact
 
-- Workflows trigger on push to main and on pull requests
-- Tests must pass before merge is allowed
-- Docker images are tagged with git SHA for traceability
-- Deployment workflows need cloud credentials stored as GitHub Secrets
-- Separate workflows for CI (test/lint) and CD (build/deploy) for clarity
-- Data validation workflow should run when anything in `data/schemas/` changes
+**`docker-build.yml`** — Runs on push to main
+- Builds both Docker images (features + inference)
+- Pushes to ECR
+
+**`deploy.yml`** — Runs on push to main (after docker-build)
+- Deploys updated images to ECS
+- Runs integration tests against deployed service
+
+## Secrets Required
+
+Set in GitHub repo settings → Secrets:
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `NVIDIA_API_KEY`
+- `MLFLOW_TRACKING_URI`
+
+## Local CI Check
+
+```bash
+ruff check .
+mypy .
+pytest tests/unit/
+```

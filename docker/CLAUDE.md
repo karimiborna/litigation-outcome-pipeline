@@ -1,21 +1,33 @@
 # Docker Module
 
-Containerization configuration for reproducible builds and deployments.
+Two Docker images — one for LLM-heavy feature extraction, one for lightweight inference.
 
-## Responsibilities
+## Images
 
-- Dockerfile(s) for each service:
-  - Feature extraction service (LLM-dependent, heavier)
-  - Model inference / API service (lightweight, fast)
-- Docker Compose for local multi-service development
-- Base image selection and dependency management
-- Build optimization (layer caching, multi-stage builds)
+**`Dockerfile.features`** — Feature extraction service
+- Heavier image (LLM dependencies)
+- Runs the feature extraction pipeline
+- Requires NVIDIA_API_KEY
 
-## Key Considerations
+**`Dockerfile.inference`** — Inference service
+- Lighter image (FastAPI + scikit-learn)
+- Serves the API endpoints
+- Loads models from MLflow at startup
 
-- Separate containers for feature extraction and inference to allow independent scaling
-- Keep images small — use multi-stage builds and slim base images
-- Pin dependency versions for reproducibility
-- Secrets (API keys for LLM, cloud credentials) must NOT be baked into images — use env vars or secret managers
-- Docker Compose should replicate the production topology locally
-- Images are built and pushed by GitHub Actions (see `.github/workflows/`)
+## Local Development
+
+```bash
+docker compose up
+# Feature service: http://localhost:8001
+# Inference API:  http://localhost:8000
+# MLflow UI:      http://localhost:5000
+```
+
+Env vars are loaded from `.env` file (never baked into images).
+
+## docker-compose.yml
+
+Runs three services:
+1. `mlflow` — tracking server
+2. `features` — LLM feature extraction
+3. `api` — FastAPI inference

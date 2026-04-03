@@ -1,23 +1,57 @@
 # API Module
 
-Inference service for serving predictions, retrievals, and counterfactual analyses.
+FastAPI inference service — the user-facing layer of the pipeline.
 
-## Responsibilities
+## File Map
 
-- Expose REST endpoints for:
-  - **Prediction** — accept case data, return win probability + expected monetary outcome
-  - **Similar cases** — return top-K similar historical cases with explanations
-  - **Counterfactual** — accept feature changes, return outcome deltas
-- Load trained models from MLflow model registry
-- Run the feature extraction pipeline on incoming raw case data
-- Handle request validation, error responses, and health checks
+| File | Purpose |
+|---|---|
+| `app.py` | FastAPI app, lifespan, all endpoints |
+| `dependencies.py` | AppState singleton — loads models/index on startup |
+| `schemas.py` | Pydantic request/response models |
 
-## Key Considerations
+## Endpoints
 
-- Separate services for feature extraction (LLM calls) and model inference (fast)
-- Feature extraction has higher latency due to LLM calls — consider async or pre-extraction
-- Models are loaded from MLflow — service needs access to the registry
-- Must support both batch and real-time inference
-- Input validation is critical — this is the system boundary
-- Containerized via Docker (see `docker/`)
-- Deployed to AWS ECS or Google Cloud Run (see `infra/`)
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | Health check + model load status |
+| POST | `/predict` | Single case prediction |
+| POST | `/predict/batch` | Batch predictions (1–50 cases) |
+| POST | `/similar` | Find similar historical cases |
+| POST | `/counterfactual` | Feature perturbation analysis |
+
+## `/predict` Request/Response
+
+```json
+// Request
+{
+  "case_text": "Plaintiff is suing defendant for $3,500...",
+  "claim_amount": 3500,
+  "has_attorney": false
+}
+
+// Response
+{
+  "win_probability": 0.73,
+  "expected_monetary_outcome": 2800.0,
+  "confidence": "high",
+  "feature_vector": {...}
+}
+```
+
+Confidence levels: `"high"` (prob > 0.7 or < 0.3), `"medium"` (0.4–0.6), `"low"` (otherwise).
+
+## Model Loading
+
+On startup, `load_models()` fetches Production-stage models from MLflow registry:
+- `litigation-win-classifier`
+- `litigation-monetary-regressor`
+
+If models aren't in Production yet, `/health` returns `models_loaded: false` and prediction endpoints return 503.
+
+## Running
+
+```bash
+uvicorn api.app:app --host 0.0.0.0 --port 8000
+# or via Docker (see docker/)
+```
