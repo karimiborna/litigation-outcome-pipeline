@@ -20,6 +20,27 @@ CASE_ROA_API = "/datasnap/rest/TServerMethods1/GetROA/{case_num}/{session_id}/"
 # Small claims case type value from the calendar dropdown
 SMALL_CLAIMS_TYPE = "M//CSM"
 
+# Document types worth downloading — substring-matched against the API's DESCRIPTION field.
+# Everything else (proof of service, continuances, scheduling, etc.) is skipped.
+DOC_TYPE_WHITELIST = {
+    "CLAIM_OF_PLAINTIFF",
+    "DEFENDANT_S_CLAIM",
+    "JUDGMENT",
+    "ORDER",
+    "DISMISSAL",
+    "Notice_of_Entry_of_Judgment",
+    "DECLARATION_OF_APPEARANCE",
+    "STIPULATION",
+    "COURT_JUDGMENT",
+}
+
+
+def is_doc_type_wanted(description: str) -> bool:
+    """Check if a document description matches any whitelisted type."""
+    desc_upper = description.upper()
+    return any(w.upper() in desc_upper for w in DOC_TYPE_WHITELIST)
+
+
 # NVIDIA vision model for scanned PDF extraction
 NVIDIA_API_BASE = "https://integrate.api.nvidia.com/v1"
 NVIDIA_VISION_MODEL = "meta/llama-3.2-90b-vision-instruct"
