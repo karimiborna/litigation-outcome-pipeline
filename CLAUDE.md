@@ -37,3 +37,10 @@ counterfactual/ (feature perturbation analysis)
 - Tests mirror the source structure under `tests/`.
 - All model artifacts are tracked through MLflow — never committed to git.
 - Raw data lives in `data/raw/`, processed in `data/processed/`, schemas in `data/schemas/`.
+
+## Phase-1 additions (scraper / data / serving)
+
+- **Court data:** API-based scraper (`scraper/court_api.py`), case **enumeration** (`scrape enumerate`), **`scrape download-cases`**. Session ID is **manual** (Cloudflare). **Document type whitelist** in `scraper/config.py` reduces PDF volume.
+- **GPU / Colab:** `notebooks/colab_gpu_extraction.ipynb` — filtered downloads, PyMuPDF + Qwen2-VL, optional label step.
+- **Labels:** `features/labels.py` — LLM extraction of outcome labels from judgment-style text (separate from feature extraction).
+- **Training / assignment API:** `scripts/train_binary_classifier.py` (synthetic demo → MLflow register), `scripts/promote_models_to_production.py`. FastAPI **`GET /`**, **`GET /health`**, **`POST /predict`** in `api/app.py`; models loaded from **MLflow Production** registry. **README** has full run + Docker instructions; **remote MLflow** needs `--serve-artifacts` and (MLflow 3 UI) **`--cors-allowed-origins`** — see `mlflow/CLAUDE.md`.
