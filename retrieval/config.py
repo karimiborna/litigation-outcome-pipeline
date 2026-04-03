@@ -7,7 +7,12 @@ from pydantic_settings import BaseSettings
 
 
 class RetrievalConfig(BaseSettings):
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
 
     embedding_model: str = Field(
         default="all-MiniLM-L6-v2",

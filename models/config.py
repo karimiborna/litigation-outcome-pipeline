@@ -9,7 +9,12 @@ from pydantic_settings import BaseSettings
 class MLflowConfig(BaseSettings):
     """MLflow tracking and registry settings, loaded from env vars or .env."""
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+        "populate_by_name": True,
+    }
 
     tracking_uri: str = Field(
         default="http://localhost:5000",

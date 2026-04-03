@@ -37,7 +37,7 @@ scraper → data → features → models → api
 - **Counterfactual module** — feature perturbation analysis.
 - **API** — FastAPI endpoints for prediction, retrieval, and counterfactual analysis.
 - **Docker, Infra, CI/CD** — Dockerfiles, Terraform (AWS), and GitHub Actions workflows.
-- **Tests** — 110 unit tests, all passing.
+- **Tests** — 113+ unit tests, all passing.
 
 ### Data Collection Progress
 
@@ -300,23 +300,104 @@ Custom perturbations can also be passed explicitly via the API.
 
 ### API
 
-The API is a FastAPI application exposing four endpoint groups:
+The API is a FastAPI application. Core routes live in [`api/app.py`](api/app.py); request/response Pydantic models are in [`api/schemas.py`](api/schemas.py).
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `GET /health` | GET | Health check — reports status, version, and whether models are loaded |
-| `POST /predict` | POST | Single case prediction — accepts case text, returns win probability + expected monetary outcome |
+| `GET /` | GET | Welcome message and link to interactive docs |
+| `GET /health` | GET | Health check — `models_loaded`, `classifier_loaded`, `regressor_loaded` (registry models present) |
+| `POST /predict` | POST | Single case prediction — validated body, returns win probability + expected monetary outcome |
 | `POST /predict/batch` | POST | Batch prediction — up to 50 cases at once |
 | `POST /similar` | POST | Similar case retrieval — accepts case text, returns top-K similar historical cases |
 | `POST /counterfactual` | POST | Counterfactual analysis — accepts case text and optional perturbations, returns outcome deltas |
 
-On startup, the API loads production models from MLflow, initializes the feature extractor (LLM client), and loads the FAISS retrieval index. If any component fails to load, the corresponding endpoint returns a 503.
+On startup, the API loads **Production**-stage sklearn models from the **MLflow Model Registry** (`models.tracking.load_production_model`), initializes the feature extractor (LLM client), and loads the FAISS retrieval index if present. `/predict` validates input with Pydantic before calling the LLM and models. Sklearn inference runs in a worker thread (`asyncio.to_thread`) so the event loop stays responsive under concurrent requests.
 
-Run locally:
+### Web service deployment (FastAPI + MLflow + Docker)
+
+Use this flow to satisfy a typical “deploy ML as a web service” assignment: train → register → promote → run API → containerize → push image.
+
+**1. Start MLflow** (registry needs a database-backed server, not a bare `file:` URI):
 
 ```bash
+mlflow server \
+  --backend-store-uri sqlite:///mlruns/mlflow.db \
+  --default-artifact-root mlruns/artifacts \
+  --host 127.0.0.1 --port 5000
+```
+
+**2. Train the binary classifier** (and the monetary regressor used by `/predict`) and register new versions:
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+python scripts/train_binary_classifier.py
+```
+
+**3. Promote the latest registered versions to Production** (required for the API loader):
+
+```bash
+python scripts/promote_models_to_production.py
+```
+
+**4. Run the API locally** (needs `LLM_API_KEY` for feature extraction on `/predict`):
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
 uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+**5. Example requests**
+
+```bash
+# Root
+curl -s http://127.0.0.1:8000/ | jq .
+
+# Health (expect classifier_loaded and regressor_loaded true after promotion)
+curl -s http://127.0.0.1:8000/health | jq .
+
+# Predict (Pydantic-validated JSON)
+curl -s -X POST http://127.0.0.1:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "case_text": "Plaintiff alleges defendant owes $1,200 for unpaid rent after 30-day notice. Attached lease and payment ledger.",
+    "case_number": "DEMO-001",
+    "claim_amount": 1200.0
+  }' | jq .
+```
+
+Example `/predict` response shape (values depend on models and LLM):
+
+```json
+{
+  "case_number": "DEMO-001",
+  "win_probability": 0.6234,
+  "expected_monetary_outcome": 850.25,
+  "confidence": "medium"
+}
+```
+
+**6. Build and run the inference Docker image** (from repository root). Use the same image name you push to your registry (Docker Hub, GHCR, GCR, etc.):
+
+```bash
+docker build -f docker/Dockerfile.inference -t YOUR_REGISTRY/litigation-inference:latest .
+docker run --rm -p 8000:8000 \
+  -e MLFLOW_TRACKING_URI=http://host.docker.internal:5000 \
+  -e LLM_API_KEY=sk-... \
+  YOUR_REGISTRY/litigation-inference:latest
+```
+
+On Linux, replace `host.docker.internal` with your host IP or run MLflow in the same Docker network (see `docker/docker-compose.yml`).
+
+**7. Push to a registry** (example: GitHub Container Registry):
+
+```bash
+docker tag YOUR_REGISTRY/litigation-inference:latest ghcr.io/YOUR_USER/litigation-inference:latest
+docker push ghcr.io/YOUR_USER/litigation-inference:latest
+```
+
+Capture a screenshot of the image in the registry UI for coursework; the image name must match what you use in `docker run` / deployment.
+
+**Async note:** `/predict` is `async def`; blocking sklearn `predict` / `predict_proba` run in a thread pool. That mainly helps when many clients hit the API at once while each request still spends most of its time in the LLM. Workloads dominated by heavy parallel CPU inference benefit more from multiple workers (`uvicorn --workers 4`) or a dedicated model server.
 
 ### Docker
 
@@ -434,7 +515,10 @@ litigation-outcome-pipeline/
 │   └── deploy.yml              # Manual deployment to AWS ECS
 ├── notebooks/
 │   └── colab_gpu_extraction.ipynb  # Google Colab notebook for GPU-based text extraction
-├── tests/unit/                 # 110 unit tests across 13 test files
+├── scripts/
+│   ├── train_binary_classifier.py   # Train + register classifier/regressor (demo data)
+│   └── promote_models_to_production.py  # Move latest registry versions to Production
+├── tests/unit/                 # unit tests (API, scraper, features, etc.)
 ├── pyproject.toml              # Project config, dependencies, tool settings
 ├── .env.example                # Template for environment variables
 └── .gitignore                  # Python, data, MLflow, Docker, IDE ignores
