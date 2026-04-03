@@ -1,0 +1,33 @@
+name: Data Validation
+
+on:
+  push:
+    paths:
+      - "data/schemas/**"
+      - "data/validation.py"
+  pull_request:
+    paths:
+      - "data/schemas/**"
+      - "data/validation.py"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run schema tests
+        run: pytest tests/unit/test_schemas.py tests/unit/test_validation.py -v
+
+      - name: Validate schema imports
+        run: python -c "from data.schemas.case import CaseMetadata, ExtractedText, ProcessedCase; print('All schemas importable')"
