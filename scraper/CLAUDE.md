@@ -42,15 +42,18 @@ Sessions expire after ~10 minutes of inactivity.
 
 ```
 scraper/
-├── config.py          # Constants, env-based settings (ScraperConfig)
+├── config.py          # Constants, env-based settings (ScraperConfig), DOC_TYPE_WHITELIST + is_doc_type_wanted()
 ├── session.py         # Session ID validation and error types
 ├── court_api.py       # DataSnap REST API client (get_cases, get_documents, download_pdf)
-├── extractor.py       # PDF text extraction (pymupdf + NVIDIA vision fallback)
+├── extractor.py       # PDF text extraction (pymupdf + NVIDIA vision fallback); CLAIM-focused vision prompt for SC-100
 ├── court_scraper.py   # Main orchestrator (CourtScraper class)
-├── cli.py             # Click CLI entry point
+├── enumerator.py      # Case number range probing → valid_cases.json
+├── cli.py             # Click CLI (scrape, enumerate, download-cases, extract, status)
 ├── rate_limiter.py    # Request delay + daily cap enforcement
 └── manifest.py        # Resume support (tracks scraped dates/cases)
 ```
+
+**Downloads:** `download-cases` (and Colab download steps) filter documents with **`is_doc_type_wanted`** so only high-value PDF types are fetched. **Cloudflare** may block some client IPs (e.g. Colab) after many requests — backoff, fresh session, or download from a trusted network.
 
 ## PDF Text Extraction
 

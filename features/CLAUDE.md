@@ -21,3 +21,7 @@ LLM-based feature extraction and preprocessing pipeline that converts raw case d
 - Cost and latency of LLM calls need to be managed (batching, caching)
 - Feature definitions should be versioned so model training is reproducible
 - Extracted features must be logged/stored for audit and debugging
+
+## Related modules
+
+- **`labels.py`** — separate LLM pipeline for **supervision**: structured labels (outcome, amounts, attorney flags) from judgment / order text, not the same as training-feature extraction in `extraction.py`.
