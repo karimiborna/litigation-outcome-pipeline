@@ -52,6 +52,18 @@ scrape enumerate --start CSM26870000 --end CSM26879999
 
 After enumeration, run `scrape download-cases` to download PDFs for all valid cases.
 
+### GPU Text Extraction (Google Colab)
+
+The notebook at `notebooks/colab_gpu_extraction.ipynb` handles the full pipeline on Google's servers — no files need to leave your laptop, and no NVIDIA API quota is consumed.
+
+1. Open the notebook in Colab and set **Runtime → Change runtime type → T4 GPU**
+2. It clones the repo (gets `valid_cases.json` with all known case numbers)
+3. Downloads PDFs directly from the court API into Colab (prompts you for a session ID)
+4. Extracts text: PyMuPDF first (free, instant), then **Qwen2-VL-7B** on GPU for scanned pages
+5. Saves to Google Drive (persistent) and/or lets you download a zip
+
+With `USE_DRIVE = True`, PDFs and text files are saved to your Google Drive so they persist if the Colab runtime disconnects. Set it to `False` to skip Drive and just download the zip at the end.
+
 ### What Needs to Happen Next
 
 1. **Finish enumeration + download** — Complete the remaining case number ranges and run `scrape download-cases` to grab PDFs. Also run `scrape scrape --date <date>` for recent calendar dates.
@@ -396,6 +408,8 @@ litigation-outcome-pipeline/
 │   ├── data-validation.yml     # Schema validation on data/ changes
 │   ├── docker-build.yml        # Build + push Docker images on merge
 │   └── deploy.yml              # Manual deployment to AWS ECS
+├── notebooks/
+│   └── colab_gpu_extraction.ipynb  # Google Colab notebook for GPU-based text extraction
 ├── tests/unit/                 # 110 unit tests across 13 test files
 ├── pyproject.toml              # Project config, dependencies, tool settings
 ├── .env.example                # Template for environment variables
@@ -429,7 +443,7 @@ mypy scraper/ data/ features/ models/ api/ retrieval/ counterfactual/ --ignore-m
 | ML Models | scikit-learn (GradientBoosting) |
 | Experiment Tracking | MLflow |
 | Feature Extraction | OpenAI API (gpt-4o-mini) |
-| PDF Text Extraction | PyMuPDF + NVIDIA Vision API (Llama 3.2 90B) |
+| PDF Text Extraction | PyMuPDF + NVIDIA Vision API (Llama 3.2 90B) / Qwen2-VL-7B on Colab GPU |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Vector Search | FAISS |
 | API | FastAPI + Uvicorn |
