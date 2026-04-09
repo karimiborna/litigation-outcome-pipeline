@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import date
@@ -18,6 +19,7 @@ from api.schemas import (
     HealthResponse,
     PredictionRequest,
     PredictionResponse,
+    RootResponse,
     SimilarCaseItem,
     SimilarCaseRequest,
     SimilarCaseResponse,
@@ -47,12 +49,22 @@ app = FastAPI(
 )
 
 
+@app.get("/", response_model=RootResponse)
+async def root() -> RootResponse:
+    return RootResponse(
+        message="Welcome to the Litigation Outcome Predictor API.",
+        service="litigation-outcome-pipeline",
+    )
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse(
         status="healthy",
         version="0.1.0",
         models_loaded=app_state.models_loaded,
+        classifier_loaded=app_state.classifier_loaded,
+        regressor_loaded=app_state.regressor_loaded,
     )
 
 
@@ -67,7 +79,7 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
     case = _build_processed_case(request)
     feature_vector = await app_state.feature_extractor.extract(case)
 
-    return _run_prediction(feature_vector, request.case_number)
+    return await asyncio.to_thread(_run_prediction_sync, feature_vector, request.case_number)
 
 
 @app.post("/predict/batch", response_model=BatchPredictionResponse)
@@ -82,7 +94,7 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
     for case_req in request.cases:
         case = _build_processed_case(case_req)
         vector = await app_state.feature_extractor.extract(case)
-        pred = _run_prediction(vector, case_req.case_number)
+        pred = await asyncio.to_thread(_run_prediction_sync, vector, case_req.case_number)
         predictions.append(pred)
 
     return BatchPredictionResponse(predictions=predictions, total=len(predictions))
@@ -184,7 +196,7 @@ def _build_processed_case_from_cf(request: CounterfactualRequest) -> ProcessedCa
     )
 
 
-def _run_prediction(vector: FeatureVector, case_number: str | None) -> PredictionResponse:
+def _run_prediction_sync(vector: FeatureVector, case_number: str | None) -> PredictionResponse:
     import pandas as pd
 
     model_input = pd.DataFrame([vector.to_model_input()])

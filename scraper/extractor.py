@@ -29,6 +29,22 @@ EXTRACTION_PROMPT = (
     "Output plain text only."
 )
 
+CLAIM_EXTRACTION_PROMPT = (
+    "This is a page from a California SC-100 small claims complaint form. "
+    "SKIP all boilerplate instructions, bilingual notices, and form guidance. "
+    "Extract ONLY the filled-in case-specific information:\n"
+    "- Plaintiff name(s), address, phone\n"
+    "- Defendant name(s), address, phone\n"
+    "- Trial date and department\n"
+    "- Dollar amount claimed and basis for the amount\n"
+    "- Description of what happened (the plaintiff's narrative)\n"
+    "- Any evidence, witnesses, or documents referenced\n"
+    "- Whether plaintiff tried to resolve before suing\n\n"
+    "If a page is only boilerplate instructions with no filled-in data, "
+    "respond with: [NO CASE DATA ON THIS PAGE]\n"
+    "Output plain text only."
+)
+
 PYMUPDF_MIN_TEXT_LENGTH = 100
 
 

@@ -261,7 +261,7 @@ def download_cases(no_extract: bool, verbose: bool) -> None:
     """
     _setup_logging(verbose)
 
-    from scraper.config import ScraperConfig
+    from scraper.config import ScraperConfig, is_doc_type_wanted
     from scraper.court_api import download_pdf, get_documents, sanitize_description
     from scraper.enumerator import ValidCasesStore
     from scraper.extractor import extract_text
@@ -282,6 +282,7 @@ def download_cases(no_extract: bool, verbose: bool) -> None:
     console.print(f"\n[bold]Downloading PDFs for {len(valid)} cases[/bold]")
     console.print(f"  Rate limit: {config.rate_limit_seconds}s between requests")
     console.print(f"  Extract text: {not no_extract}")
+    console.print("  Document filter: [green]enabled[/green] (skipping procedural docs)")
     console.print()
 
     import requests as req
@@ -328,6 +329,9 @@ def download_cases(no_extract: bool, verbose: bool) -> None:
             desc = doc.get("DESCRIPTION", "doc")
             doc_url = doc.get("URL", "")
             if not doc_url:
+                continue
+
+            if not is_doc_type_wanted(desc):
                 continue
 
             safe_desc = sanitize_description(desc)

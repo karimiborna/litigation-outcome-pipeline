@@ -12,45 +12,18 @@ Trains and serves two scikit-learn models with MLflow tracking.
 
 ## Two Models
 
-**Classifier** — plaintiff win/loss probability
-- Algorithm: GradientBoostingClassifier (200 trees, depth=5, lr=0.1)
-- Output: win probability (0–1) + confidence level
-- Metrics: accuracy, precision, recall, F1, ROC-AUC
+- Two distinct prediction targets: binary outcome (win/lose) and continuous outcome (monetary amount)
+- Models should be compared across experiments using MLflow tracking
+- Feature importance / interpretability is important for downstream explanation generation
+- Train/validation/test splits must be consistent and reproducible
+- Model artifacts are never committed to git — always tracked via MLflow
 
-**Regressor** — expected monetary outcome
-- Algorithm: GradientBoostingRegressor
-- Output: expected dollar amount
-- Metrics: MAE, RMSE, R²
+## Scripts and registry workflow
 
-## MLflow
+- **`scripts/train_binary_classifier.py`** — trains classifier + regressor on **synthetic** data (same feature columns as `FeatureVector.to_model_input()`), logs metrics, registers **`litigation-win-classifier`** and **`litigation-monetary-regressor`**. Requires reachable MLflow with model registry.
+- **`scripts/promote_models_to_production.py`** — moves latest registered version of each model to **Production** (API loads `models:/.../Production`). MLflow may warn that stages are deprecated in favor of aliases in a future major version.
+- **`models/tracking.get_or_create_experiment`** — for **remote HTTP** tracking URIs, does **not** pass a client `artifact_location` (server must use **`--serve-artifacts`**). If an existing experiment still has a **server-local** `artifact_location` (`/home/...` or `file:`), training uses a sibling experiment name with suffix **`-remote-artifacts`** so laptops can upload artifacts.
 
-All training runs are logged to MLflow. Models graduate through stages:
-`None → Staging → Production`
+## Still to do for real models
 
-Only Production-stage models are loaded by the API.
-
-```bash
-# Start MLflow server
-mlflow server --config mlflow/server_config.yaml
-
-# UI at http://localhost:5000
-```
-
-Model names in registry:
-- `litigation-win-classifier`
-- `litigation-monetary-regressor`
-
-## Training
-
-```python
-from models.trainer import ClassifierTrainer, RegressorTrainer
-from models.tracking import init_mlflow
-
-init_mlflow()
-clf = ClassifierTrainer()
-clf.train(feature_vectors, labels)  # logs to MLflow automatically
-```
-
-## Key Rule
-
-Model artifacts are **never committed to git** — always loaded from MLflow registry.
+- Replace synthetic training with **real feature rows + labels** from processed cases (`features/` + `features/labels.py` or manual labels), then retrain and register new versions.

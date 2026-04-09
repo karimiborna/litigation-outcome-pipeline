@@ -13,36 +13,13 @@ LLM-based feature extraction — converts raw case text into structured ML signa
 
 ## What Gets Extracted
 
-| Feature | Type | Scale |
-|---|---|---|
-| evidence_strength | int | 1–5 |
-| contract_present | bool | — |
-| argument_clarity | int | 1–5 |
-| witness_count | int | raw count |
-| timeline_clarity | int | 1–5 |
-| legal_representation | bool | has attorney |
-| counterclaim_present | bool | — |
-| claim_category | str | e.g. "property damage" |
-| claim_amount | float | dollars |
-| ... | | |
+- LLM is used strictly for feature extraction, NOT for prediction
+- Prompts should produce consistent, parseable structured output (e.g., JSON)
+- Feature extraction should be idempotent — same input always produces same features
+- Cost and latency of LLM calls need to be managed (batching, caching)
+- Feature definitions should be versioned so model training is reproducible
+- Extracted features must be logged/stored for audit and debugging
 
-Missing info → `null` (never guessed). Nulls → `-1` sentinel when converting to model input.
+## Related modules
 
-## Caching
-
-Features are cached by SHA256 hash of the case text. Cache lives in `data/features_cache/`. Re-running on the same case text costs 0 LLM calls.
-
-## LLM Role
-
-The LLM is used **strictly for extraction, not prediction**. It reads case text and fills in a JSON schema. The JSON schema is defined in `schema.py` (LLMFeatures). Temperature is set to 0 for deterministic output.
-
-## Usage
-
-```python
-from features.extraction import FeatureExtractor
-from features.config import FeaturesConfig
-
-extractor = FeatureExtractor(FeaturesConfig())
-vector = extractor.extract(processed_case)
-model_input = vector.to_model_input()  # flat dict of floats
-```
+- **`labels.py`** — separate LLM pipeline for **supervision**: structured labels (outcome, amounts, attorney flags) from judgment / order text, not the same as training-feature extraction in `extraction.py`.

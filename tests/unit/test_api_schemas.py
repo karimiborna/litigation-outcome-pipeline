@@ -8,6 +8,7 @@ from api.schemas import (
     HealthResponse,
     PredictionRequest,
     PredictionResponse,
+    RootResponse,
     SimilarCaseRequest,
 )
 
@@ -70,5 +71,19 @@ class TestBatchPredictionRequest:
 
 class TestHealthResponse:
     def test_create(self):
-        r = HealthResponse(status="healthy", version="0.1.0", models_loaded=True)
+        r = HealthResponse(
+            status="healthy",
+            version="0.1.0",
+            models_loaded=True,
+            classifier_loaded=True,
+            regressor_loaded=True,
+        )
         assert r.models_loaded is True
+        assert r.classifier_loaded is True
+        assert r.regressor_loaded is True
+
+
+class TestRootResponse:
+    def test_defaults(self):
+        r = RootResponse(message="Hi", service="test")
+        assert r.docs == "/docs"

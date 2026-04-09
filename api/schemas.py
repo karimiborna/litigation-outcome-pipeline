@@ -5,6 +5,14 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
+class RootResponse(BaseModel):
+    """Welcome payload for GET /."""
+
+    message: str
+    service: str
+    docs: str = "/docs"
+
+
 class PredictionRequest(BaseModel):
     case_text: str = Field(..., min_length=10)
     case_number: str | None = None
@@ -68,6 +76,8 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     models_loaded: bool
+    classifier_loaded: bool = False
+    regressor_loaded: bool = False
 
 
 class BatchPredictionRequest(BaseModel):

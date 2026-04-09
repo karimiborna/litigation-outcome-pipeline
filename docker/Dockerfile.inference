@@ -1,4 +1,6 @@
-FROM python:3.12-slim AS base
+# Inference API: loads sklearn models from the MLflow Model Registry at startup.
+# Build from repo root: docker build -f docker/Dockerfile.inference -t <your-registry>/litigation-inference:latest .
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
@@ -6,35 +8,36 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends build-essential && \
     rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir . && \
-    pip install --no-cache-dir \
-        fastapi>=0.110 \
-        uvicorn>=0.29 \
-        mlflow>=2.11 \
-        scikit-learn>=1.4 \
-        sentence-transformers>=2.5 \
-        faiss-cpu>=1.8 \
-        pandas>=2.2 \
-        numpy>=1.26
+COPY pyproject.toml README.md ./
+COPY api/ api/
+COPY counterfactual/ counterfactual/
+COPY data/ data/
+COPY features/ features/
+COPY models/ models/
+COPY retrieval/ retrieval/
+COPY scraper/ scraper/
+
+RUN pip install --no-cache-dir .
 
 FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY --from=base /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=base /usr/local/bin /usr/local/bin
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
-COPY api/ api/
-COPY models/ models/
-COPY features/ features/
-COPY retrieval/ retrieval/
-COPY counterfactual/ counterfactual/
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Runtime data (schemas, optional retrieval index mount)
 COPY data/ data/
+
+ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8000/health || exit 1
 
 CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]

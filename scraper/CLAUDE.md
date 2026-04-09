@@ -46,14 +46,37 @@ Two DLL services expose DataSnap REST APIs:
 ```
 GET /cc/CaseCalendar.dll/datasnap/rest/TServerMethods1/GetCases2/{date}/M//CSM/{session_id}
 GET /ci/CaseInfo.dll/datasnap/rest/TServerMethods1/GetDocuments/{case_num}/{session_id}/
-GET /ci/CaseInfo.dll/datasnap/rest/TServerMethods1/GetROA/{case_num}/{session_id}/
-GET /ci/CaseInfo.dll/datasnap/rest/TServerMethods1/GetParties/{case_num}/{session_id}/
+```
+- Document URLs are **time-limited signed links** (~10 min expiry)
+- PDFs must be downloaded immediately — URLs cannot be cached
+
+### Session Management
+
+Session IDs are Cloudflare-issued and require browser CAPTCHA. **No programmatic acquisition possible.** User must:
+1. Visit `https://webapps.sftc.org/cc/CaseCalendar.dll` in browser
+2. Copy SessionID from the URL
+3. Export as `SFTC_SESSION_ID` env var
+
+Sessions expire after ~10 minutes of inactivity.
+
+## Architecture
+
+```
+scraper/
+├── config.py          # Constants, env-based settings (ScraperConfig), DOC_TYPE_WHITELIST + is_doc_type_wanted()
+├── session.py         # Session ID validation and error types
+├── court_api.py       # DataSnap REST API client (get_cases, get_documents, download_pdf)
+├── extractor.py       # PDF text extraction (pymupdf + NVIDIA vision fallback); CLAIM-focused vision prompt for SC-100
+├── court_scraper.py   # Main orchestrator (CourtScraper class)
+├── enumerator.py      # Case number range probing → valid_cases.json
+├── cli.py             # Click CLI (scrape, enumerate, download-cases, extract, status)
+├── rate_limiter.py    # Request delay + daily cap enforcement
+└── manifest.py        # Resume support (tracks scraped dates/cases)
 ```
 
-Result format: `{"result": [count, "[{...json array...}]"]}`
-- `result[0] == -1` → session expired
-- `result[0] == 0` → no results
-- `result[0] > 0` → count, parse `result[1]` as JSON
+**Downloads:** `download-cases` (and Colab download steps) filter documents with **`is_doc_type_wanted`** so only high-value PDF types are fetched. **Cloudflare** may block some client IPs (e.g. Colab) after many requests — backoff, fresh session, or download from a trusted network.
+
+## PDF Text Extraction
 
 **Document URLs are time-limited (~10 min signed URLs)** — download PDFs immediately after fetching the document list, never queue for later.
 

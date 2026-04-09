@@ -27,16 +27,17 @@ scraper → data → features → models → api
 
 ### What's Built
 
-- **Scraper** — fully working. Uses a reverse-engineered DataSnap REST API (JSON endpoints) to fetch cases and documents from the SF Superior Court. PDF text extraction uses PyMuPDF for text-based PDFs (free, instant) with NVIDIA vision API fallback for scanned PDFs.
+- **Scraper** — fully working. Uses a reverse-engineered DataSnap REST API (JSON endpoints) to fetch cases and documents from the SF Superior Court. A **document type whitelist** filters out procedural noise (proof of service, continuances, etc.) and only downloads useful documents (claims, judgments, orders, dismissals). PDF text extraction uses PyMuPDF for text-based PDFs (free, instant) with NVIDIA vision API or local GPU fallback for scanned PDFs. A **targeted extraction prompt** for SC-100 claim forms skips bilingual boilerplate and extracts only filled-in case data.
 - **Case enumerator** — brute-forces case number ranges to discover historical cases that are no longer on the court calendar.
 - **Data layer** — Pydantic schemas, validation, text cleaning, and filesystem storage.
 - **Features module** — LLM prompt templates, feature schemas, and extraction logic (ready to use once data is collected).
+- **Label extraction** — sends outcome documents (judgments, orders, dismissals) to GPT-4o-mini to extract structured labels: outcome (plaintiff win/defendant win/dismissed/settled), amount awarded, whether defendant appeared, attorney presence, and judgment date. Cached to avoid redundant LLM calls.
 - **Models module** — scikit-learn trainers with MLflow tracking (ready to use once features are extracted).
 - **Retrieval module** — sentence-transformers + FAISS index for similar case search.
 - **Counterfactual module** — feature perturbation analysis.
 - **API** — FastAPI endpoints for prediction, retrieval, and counterfactual analysis.
 - **Docker, Infra, CI/CD** — Dockerfiles, Terraform (AWS), and GitHub Actions workflows.
-- **Tests** — 110 unit tests, all passing.
+- **Tests** — 113+ unit tests, all passing.
 
 ### Data Collection Progress
 
@@ -50,7 +51,7 @@ scrape enumerate --start CSM25870000 --end CSM25879999
 scrape enumerate --start CSM26870000 --end CSM26879999
 ```
 
-After enumeration, run `scrape download-cases` to download PDFs for all valid cases.
+After enumeration, run `scrape download-cases` to download PDFs for all valid cases. Only whitelisted document types are downloaded (see Document Type Filtering below).
 
 ### GPU Text Extraction (Google Colab)
 
@@ -58,20 +59,42 @@ The notebook at `notebooks/colab_gpu_extraction.ipynb` handles the full pipeline
 
 1. Open the notebook in Colab and set **Runtime → Change runtime type → T4 GPU**
 2. It clones the repo (gets `valid_cases.json` with all known case numbers)
-3. Downloads PDFs directly from the court API into Colab (prompts you for a session ID)
-4. Extracts text: PyMuPDF first (free, instant), then **Qwen2-VL-7B** on GPU for scanned pages
-5. Saves to Google Drive (persistent) and/or lets you download a zip
+3. Downloads only whitelisted PDFs from the court API (skips procedural docs)
+4. Extracts text: PyMuPDF first (free, instant), then **Qwen2-VL-7B** on GPU for scanned pages with a targeted prompt for claims
+5. Runs **GPT-4o-mini label extraction** on outcome documents (requires OpenAI API key, ~$0.001/case)
+6. Saves to Google Drive (persistent) and/or lets you download a zip
 
 With `USE_DRIVE = True`, PDFs and text files are saved to your Google Drive so they persist if the Colab runtime disconnects. Set it to `False` to skip Drive and just download the zip at the end.
+
+**Team workflow:** All members use the same shared Drive folder. Set `MY_WORKER`/`TOTAL_WORKERS` in the config cell to split the workload (e.g. 0/3, 1/3, 2/3). The notebook skips cases already downloaded by teammates.
+
+### Document Type Filtering
+
+Not all court documents are useful for prediction. The scraper and Colab notebook filter by a whitelist of 9 document types:
+
+| Document Type | Purpose | Count (63 cases) |
+|---|---|---|
+| CLAIM_OF_PLAINTIFF | Primary input features (narrative, amount, evidence) | 64 |
+| ORDER | Rulings, dismissals | 35 |
+| Notice_of_Entry_of_Judgment | Confirms judgment + amounts | 25 |
+| JUDGMENT_ON_PLAINTIFF_S_CLAIM | Win/loss + exact dollar amounts awarded | 24 |
+| DISMISSAL_OF_ENTIRE_ACTION | Explicit dismissal | 20 |
+| DECLARATION_OF_APPEARANCE | Attorney representation signal | 14 |
+| Small_Claims_Order_of_Dismissal | Court-ordered dismissal | 13 |
+| STIPULATION | Case settled by agreement | 3 |
+| DEFENDANT_S_CLAIM | Counterclaim details | 1 |
+
+Everything else (proof of service, continuances, scheduling, subpoenas, etc.) is skipped. This cuts document count by ~50% and GPU extraction time by ~70-80% since most outcome documents have selectable text and need no OCR.
 
 ### What Needs to Happen Next
 
 1. **Finish enumeration + download** — Complete the remaining case number ranges and run `scrape download-cases` to grab PDFs. Also run `scrape scrape --date <date>` for recent calendar dates.
-2. **Extract features** — Once enough cases are collected, run the LLM feature extraction on the extracted text (requires `LLM_API_KEY` in `.env`).
-3. **Label data** — Determine case outcomes (plaintiff win/loss, monetary result) from the extracted text. This may require manual review or additional parsing.
-4. **Train models** — Use the features module output to train the classifier and regressor via MLflow.
-5. **Build retrieval index** — Embed all case texts and build the FAISS index.
-6. **Deploy** — Containerize and deploy to AWS ECS.
+2. **Extract text** — Run the Colab notebook to OCR scanned PDFs on GPU.
+3. **Extract labels** — The Colab notebook's Step 5 sends outcome documents to GPT-4o-mini and produces `labels.json` with structured outcomes.
+4. **Extract features** — Run LLM feature extraction on claim text (requires `LLM_API_KEY` in `.env`).
+5. **Train models** — Use the features module output + labels to train the classifier and regressor via MLflow.
+6. **Build retrieval index** — Embed all case texts and build the FAISS index.
+7. **Deploy** — Containerize and deploy to AWS ECS.
 
 ### All CLI Commands
 
@@ -277,23 +300,104 @@ Custom perturbations can also be passed explicitly via the API.
 
 ### API
 
-The API is a FastAPI application exposing four endpoint groups:
+The API is a FastAPI application. Core routes live in [`api/app.py`](api/app.py); request/response Pydantic models are in [`api/schemas.py`](api/schemas.py).
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `GET /health` | GET | Health check — reports status, version, and whether models are loaded |
-| `POST /predict` | POST | Single case prediction — accepts case text, returns win probability + expected monetary outcome |
+| `GET /` | GET | Welcome message and link to interactive docs |
+| `GET /health` | GET | Health check — `models_loaded`, `classifier_loaded`, `regressor_loaded` (registry models present) |
+| `POST /predict` | POST | Single case prediction — validated body, returns win probability + expected monetary outcome |
 | `POST /predict/batch` | POST | Batch prediction — up to 50 cases at once |
 | `POST /similar` | POST | Similar case retrieval — accepts case text, returns top-K similar historical cases |
 | `POST /counterfactual` | POST | Counterfactual analysis — accepts case text and optional perturbations, returns outcome deltas |
 
-On startup, the API loads production models from MLflow, initializes the feature extractor (LLM client), and loads the FAISS retrieval index. If any component fails to load, the corresponding endpoint returns a 503.
+On startup, the API loads **Production**-stage sklearn models from the **MLflow Model Registry** (`models.tracking.load_production_model`), initializes the feature extractor (LLM client), and loads the FAISS retrieval index if present. `/predict` validates input with Pydantic before calling the LLM and models. Sklearn inference runs in a worker thread (`asyncio.to_thread`) so the event loop stays responsive under concurrent requests.
 
-Run locally:
+### Web service deployment (FastAPI + MLflow + Docker)
+
+Use this flow to satisfy a typical “deploy ML as a web service” assignment: train → register → promote → run API → containerize → push image.
+
+**1. Start MLflow** (registry needs a database-backed server, not a bare `file:` URI):
 
 ```bash
+mlflow server \
+  --backend-store-uri sqlite:///mlruns/mlflow.db \
+  --default-artifact-root mlruns/artifacts \
+  --host 127.0.0.1 --port 5000
+```
+
+**2. Train the binary classifier** (and the monetary regressor used by `/predict`) and register new versions:
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+python scripts/train_binary_classifier.py
+```
+
+**3. Promote the latest registered versions to Production** (required for the API loader):
+
+```bash
+python scripts/promote_models_to_production.py
+```
+
+**4. Run the API locally** (needs `LLM_API_KEY` for feature extraction on `/predict`):
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
 uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+**5. Example requests**
+
+```bash
+# Root
+curl -s http://127.0.0.1:8000/ | jq .
+
+# Health (expect classifier_loaded and regressor_loaded true after promotion)
+curl -s http://127.0.0.1:8000/health | jq .
+
+# Predict (Pydantic-validated JSON)
+curl -s -X POST http://127.0.0.1:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "case_text": "Plaintiff alleges defendant owes $1,200 for unpaid rent after 30-day notice. Attached lease and payment ledger.",
+    "case_number": "DEMO-001",
+    "claim_amount": 1200.0
+  }' | jq .
+```
+
+Example `/predict` response shape (values depend on models and LLM):
+
+```json
+{
+  "case_number": "DEMO-001",
+  "win_probability": 0.6234,
+  "expected_monetary_outcome": 850.25,
+  "confidence": "medium"
+}
+```
+
+**6. Build and run the inference Docker image** (from repository root). Use the same image name you push to your registry (Docker Hub, GHCR, GCR, etc.):
+
+```bash
+docker build -f docker/Dockerfile.inference -t YOUR_REGISTRY/litigation-inference:latest .
+docker run --rm -p 8000:8000 \
+  -e MLFLOW_TRACKING_URI=http://host.docker.internal:5000 \
+  -e LLM_API_KEY=sk-... \
+  YOUR_REGISTRY/litigation-inference:latest
+```
+
+On Linux, replace `host.docker.internal` with your host IP or run MLflow in the same Docker network (see `docker/docker-compose.yml`).
+
+**7. Push to a registry** (example: GitHub Container Registry):
+
+```bash
+docker tag YOUR_REGISTRY/litigation-inference:latest ghcr.io/YOUR_USER/litigation-inference:latest
+docker push ghcr.io/YOUR_USER/litigation-inference:latest
+```
+
+Capture a screenshot of the image in the registry UI for coursework; the image name must match what you use in `docker run` / deployment.
+
+**Async note:** `/predict` is `async def`; blocking sklearn `predict` / `predict_proba` run in a thread pool. That mainly helps when many clients hit the API at once while each request still spends most of its time in the LLM. Workloads dominated by heavy parallel CPU inference benefit more from multiple workers (`uvicorn --workers 4`) or a dedicated model server.
 
 ### Docker
 
@@ -375,7 +479,8 @@ litigation-outcome-pipeline/
 │   ├── config.py               # LLM provider settings
 │   ├── prompts.py              # Prompt templates for structured feature extraction
 │   ├── schema.py               # LLMFeatures + FeatureVector (model input)
-│   └── extraction.py           # LLM client, response parsing, caching
+│   ├── extraction.py           # LLM client, response parsing, caching
+│   └── labels.py               # LLM-based label extraction (outcome, award, attorney presence)
 ├── models/
 │   ├── config.py               # MLflow tracking/registry settings
 │   ├── tracking.py             # MLflow helpers (experiments, logging, registry)
@@ -410,7 +515,10 @@ litigation-outcome-pipeline/
 │   └── deploy.yml              # Manual deployment to AWS ECS
 ├── notebooks/
 │   └── colab_gpu_extraction.ipynb  # Google Colab notebook for GPU-based text extraction
-├── tests/unit/                 # 110 unit tests across 13 test files
+├── scripts/
+│   ├── train_binary_classifier.py   # Train + register classifier/regressor (demo data)
+│   └── promote_models_to_production.py  # Move latest registry versions to Production
+├── tests/unit/                 # unit tests (API, scraper, features, etc.)
 ├── pyproject.toml              # Project config, dependencies, tool settings
 ├── .env.example                # Template for environment variables
 └── .gitignore                  # Python, data, MLflow, Docker, IDE ignores
