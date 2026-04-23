@@ -26,4 +26,4 @@ class FeaturesConfig(BaseSettings):
     cache_dir: str = Field(default="data/features_cache", alias="FEATURES_CACHE_DIR")
     enable_cache: bool = True
 
-    feature_version: str = "v1"
+    feature_version: str = "v2"

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -100,8 +101,9 @@ class ProcessedCase(BaseModel):
     has_contract: bool | None = None
     plaintiff_count: int = 0
     defendant_count: int = 0
-    has_attorney_plaintiff: bool = False
-    has_attorney_defendant: bool = False
+    has_attorney_plaintiff: bool | None = None
+    has_attorney_defendant: bool | None = None
+    user_side: Literal["plaintiff", "defendant"] = "plaintiff"
 
     @field_validator("case_number")
     @classmethod

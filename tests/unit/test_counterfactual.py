@@ -1,4 +1,4 @@
-"""Tests for counterfactual analysis."""
+"""Tests for counterfactual analysis (v2 existence-based feature schema)."""
 
 import numpy as np
 import pytest
@@ -12,16 +12,16 @@ from features.schema import FeatureVector
 
 
 class FakeClassifier:
-    """Fake classifier that returns higher win probability for stronger evidence."""
+    """Fake classifier: higher win probability when written communications exist."""
 
     def predict_proba(self, x):
-        evidence = x.iloc[0]["evidence_strength"]
-        prob = min(0.95, max(0.05, evidence / 5.0)) if evidence >= 0 else 0.5
+        signal = x.iloc[0]["has_written_communications"]
+        prob = 0.8 if signal >= 1.0 else 0.3
         return np.array([[1 - prob, prob]])
 
 
 class FakeRegressor:
-    """Fake regressor that returns monetary amount proportional to claim."""
+    """Fake regressor: monetary outcome proportional to claim amount."""
 
     def predict(self, x):
         claimed = x.iloc[0]["monetary_amount_claimed"]
@@ -37,16 +37,17 @@ def analyzer():
 def sample_vector():
     return FeatureVector(
         case_number="SC26001",
-        evidence_strength=3,
+        user_is_plaintiff=True,
         contract_present=True,
-        argument_clarity_plaintiff=3,
-        argument_clarity_defendant=2,
         monetary_amount_claimed=5000.0,
         witness_count=1,
-        documentary_evidence=True,
-        timeline_clarity=3,
-        legal_representation_plaintiff=False,
-        legal_representation_defendant=False,
+        user_has_attorney=False,
+        opposing_party_has_attorney=False,
+        has_written_communications=False,
+        has_receipts_or_financial_records=True,
+        argument_cites_specific_dates=True,
+        argument_cites_specific_dollar_amounts=True,
+        sent_written_demand_letter=False,
         counterclaim_present=False,
         plaintiff_count=1,
         defendant_count=1,
@@ -57,10 +58,12 @@ def sample_vector():
 
 class TestCounterfactualAnalyzer:
     def test_explicit_perturbation(self, analyzer, sample_vector):
-        results = analyzer.analyze(sample_vector, perturbations={"evidence_strength": 5.0})
+        results = analyzer.analyze(
+            sample_vector, perturbations={"has_written_communications": 1.0}
+        )
         assert len(results) == 1
-        assert results[0].feature_name == "evidence_strength"
-        assert results[0].new_value == 5.0
+        assert results[0].feature_name == "has_written_communications"
+        assert results[0].new_value == 1.0
         assert results[0].win_prob_delta > 0
 
     def test_auto_perturbations(self, analyzer, sample_vector):
@@ -76,15 +79,15 @@ class TestCounterfactualAnalyzer:
 
     def test_result_to_dict(self):
         r = CounterfactualResult(
-            feature_name="evidence_strength",
-            original_value=3.0,
-            new_value=5.0,
-            original_win_prob=0.6,
+            feature_name="has_written_communications",
+            original_value=0.0,
+            new_value=1.0,
+            original_win_prob=0.3,
             new_win_prob=0.8,
             original_monetary=3000.0,
             new_monetary=3000.0,
         )
         d = r.to_dict()
-        assert d["feature"] == "evidence_strength"
-        assert d["win_probability"]["delta"] == 0.2
+        assert d["feature"] == "has_written_communications"
+        assert d["win_probability"]["delta"] == 0.5
         assert "increase" in d["description"]
