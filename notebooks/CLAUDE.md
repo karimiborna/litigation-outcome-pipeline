@@ -15,6 +15,13 @@ End-to-end pipeline notebook designed for Google Colab (T4 GPU runtime). Handles
    - Uses `response_format={"type": "json_object"}` for guaranteed valid JSON
    - Smart truncation keeps first 1/3 + last 2/3 of long docs (rulings are at the end)
    - Saves per-case JSON files to `labels/` for team deduplication, merges into `labels.json`
+4. **Feature extraction** via GPT-4o-mini (Step 6 / Cell 15) — ~40 existence-based booleans per case using the v2 `FeatureExtractor` / `LLMFeatures` schema.
+   - Builds `ProcessedCase` per case from the Drive-mounted extracted txts
+   - Excludes label docs (`JUDGMENT`, `ORDER`, `DISMISSAL`, `STIPULATION`, `Notice_of_Entry_of_Judgment`, `COURT_JUDGMENT`) to preserve the leakage firewall
+   - Auto-detects `user_side` per case: `"defendant"` if a `DEFENDANT_S_CLAIM` txt exists, else `"plaintiff"`
+   - Writes per-case `FeatureVector` JSONs to `{DRIVE_DIR}/features_cache/` (content-hashed filenames)
+   - Reuses the OpenAI key entered in Step 5, or re-prompts if Step 5 was skipped
+   - Supports the same `MY_WORKER`/`TOTAL_WORKERS` stride sharding as earlier steps
 
 ### Key details
 
