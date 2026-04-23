@@ -13,9 +13,8 @@ import os
 from pathlib import Path
 
 import fitz  # pymupdf
-from openai import OpenAI
-
 from config import NVIDIA_API_BASE, NVIDIA_VISION_MODEL, PDF_IMAGE_DPI
+from openai import OpenAI
 
 EXTRACTION_PROMPT = (
     "This is a page from a San Francisco small claims court document. "
@@ -47,8 +46,7 @@ def _extract_with_nvidia(pdf_path: Path) -> str:
     api_key = os.environ.get("NVIDIA_API_KEY", "").strip()
     if not api_key:
         raise SystemExit(
-            "ERROR: Set NVIDIA_API_KEY env var. "
-            "Get a free key at https://build.nvidia.com"
+            "ERROR: Set NVIDIA_API_KEY env var. Get a free key at https://build.nvidia.com"
         )
 
     client = OpenAI(base_url=NVIDIA_API_BASE, api_key=api_key)
@@ -68,9 +66,7 @@ def _extract_with_nvidia(pdf_path: Path) -> str:
                         {"type": "text", "text": EXTRACTION_PROMPT},
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{img_b64}"
-                            },
+                            "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"},
                         },
                     ],
                 }
@@ -96,5 +92,5 @@ def extract_text(pdf_path: Path) -> str:
         print(f"    Extracted {len(text)} chars via pymupdf (no API quota used).")
         return text
 
-    print(f"    No selectable text found — using NVIDIA vision API.")
+    print("    No selectable text found — using NVIDIA vision API.")
     return _extract_with_nvidia(pdf_path)

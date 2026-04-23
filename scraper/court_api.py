@@ -50,9 +50,7 @@ def get_cases(session_id: str, date_str: str, config: ScraperConfig) -> list[dic
     data = resp.json()
 
     if data["result"][0] == -1:
-        raise SessionExpiredError(
-            "Session expired. Get a fresh SessionID from your browser."
-        )
+        raise SessionExpiredError("Session expired. Get a fresh SessionID from your browser.")
     if data["result"][0] == 0:
         return []
 
@@ -69,9 +67,7 @@ def get_documents(case_num: str, session_id: str, config: ScraperConfig) -> list
     through CaseInfo.dll to imgquery.sftc.org.
     """
     url = (
-        f"{BASE_URL}{CASE_PATH}"
-        f"/datasnap/rest/TServerMethods1/GetDocuments"
-        f"/{case_num}/{session_id}/"
+        f"{BASE_URL}{CASE_PATH}/datasnap/rest/TServerMethods1/GetDocuments/{case_num}/{session_id}/"
     )
     resp = requests.get(
         url,
@@ -97,11 +93,7 @@ def get_roa(case_num: str, session_id: str, config: ScraperConfig) -> list[dict]
     Returns a list of ROA entry dicts if the case exists, empty list otherwise.
     Cheaper than GetDocuments for probing since it doesn't generate signed URLs.
     """
-    url = (
-        f"{BASE_URL}{CASE_PATH}"
-        f"/datasnap/rest/TServerMethods1/GetROA"
-        f"/{case_num}/{session_id}/"
-    )
+    url = f"{BASE_URL}{CASE_PATH}/datasnap/rest/TServerMethods1/GetROA/{case_num}/{session_id}/"
     resp = requests.get(
         url,
         headers={"User-Agent": config.user_agent},
@@ -118,9 +110,7 @@ def get_roa(case_num: str, session_id: str, config: ScraperConfig) -> list[dict]
     return json.loads(data["result"][1])
 
 
-def probe_case_exists(
-    case_num: str, session_id: str, config: ScraperConfig
-) -> int:
+def probe_case_exists(case_num: str, session_id: str, config: ScraperConfig) -> int:
     """Check if a case number exists. Returns document count (0 = not found).
 
     Tries GetROA first (lightweight). Falls back to GetDocuments if ROA

@@ -359,9 +359,7 @@ def download_cases(no_extract: bool, verbose: bool) -> None:
 
         if cases_done % 10 == 0:
             save_manifest(manifest, manifest_path)
-            console.print(
-                f"  Progress: {cases_done}/{len(valid)} cases, {total_pdfs} PDFs"
-            )
+            console.print(f"  Progress: {cases_done}/{len(valid)} cases, {total_pdfs} PDFs")
 
     save_manifest(manifest, manifest_path)
 

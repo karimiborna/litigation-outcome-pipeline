@@ -9,14 +9,13 @@ Then paste the ngrok URL into Colab.
 """
 
 import requests
-from flask import Flask, request, Response
+from flask import Flask, Response, request
 from pyngrok import ngrok
 
 app = Flask(__name__)
 
 USER_AGENT = (
-    "MSDS603-Research-Scraper/1.0 "
-    "(SF Small Claims academic study; contact: msds603-team@usfca.edu)"
+    "MSDS603-Research-Scraper/1.0 (SF Small Claims academic study; contact: msds603-team@usfca.edu)"
 )
 
 
@@ -44,8 +43,8 @@ def proxy():
 
 if __name__ == "__main__":
     tunnel = ngrok.connect(5000)
-    print(f"\n{'='*50}")
-    print(f"PROXY URL (paste into Colab):")
+    print(f"\n{'=' * 50}")
+    print("PROXY URL (paste into Colab):")
     print(f"  {tunnel.public_url}")
-    print(f"{'='*50}\n")
+    print(f"{'=' * 50}\n")
     app.run(port=5000)

@@ -58,9 +58,7 @@ def sample_vector():
 
 class TestCounterfactualAnalyzer:
     def test_explicit_perturbation(self, analyzer, sample_vector):
-        results = analyzer.analyze(
-            sample_vector, perturbations={"has_written_communications": 1.0}
-        )
+        results = analyzer.analyze(sample_vector, perturbations={"has_written_communications": 1.0})
         assert len(results) == 1
         assert results[0].feature_name == "has_written_communications"
         assert results[0].new_value == 1.0

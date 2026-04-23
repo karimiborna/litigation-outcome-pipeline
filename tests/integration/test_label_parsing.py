@@ -1,6 +1,6 @@
 """Integration test for LabelExtractor._parse_response — JSON → CaseLabels."""
 
-from features.labels import LabelExtractor, FeaturesConfig
+from features.labels import FeaturesConfig, LabelExtractor
 
 
 class TestLabelParsing:

@@ -154,6 +154,7 @@ class CaseEnumerator:
                 self._store.save()
                 self._session_id = prompt_refresh()
                 from scraper.session_manager import start_keepalive
+
                 start_keepalive(self._session_id)
                 time.sleep(self._probe_delay)
                 doc_count = probe_case_exists(case_num, self._session_id, self._config)

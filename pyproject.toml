@@ -51,6 +51,10 @@ select = ["E", "F", "I", "N", "W", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/*.py" = ["E402"]  # repo root added to sys.path before project imports
+"features/prompts.py" = ["E501"]  # multi-line LLM prompt strings exceed 100 chars
+"features/labels.py" = ["E501"]   # LLM prompt strings exceed 100 chars
+"scraper/scrape.py" = ["E402", "E501"]  # sys.path manipulation + argparse help strings
+"notebooks/*" = ["E402"]  # notebooks import conditionally after setup cells
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

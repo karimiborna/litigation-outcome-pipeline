@@ -140,9 +140,7 @@ class LabelExtractor:
             self._save_cache(case_number, outcome_text, labels)
         return labels
 
-    def extract_batch(
-        self, case_numbers: list[str], txt_dir: Path
-    ) -> dict[str, CaseLabels]:
+    def extract_batch(self, case_numbers: list[str], txt_dir: Path) -> dict[str, CaseLabels]:
         """Extract labels for multiple cases. Returns {case_number: CaseLabels}."""
         results: dict[str, CaseLabels] = {}
         for case_number in case_numbers:
@@ -215,9 +213,7 @@ class LabelExtractor:
         except Exception:
             return None
 
-    def _save_cache(
-        self, case_number: str, outcome_text: str, labels: CaseLabels
-    ) -> None:
+    def _save_cache(self, case_number: str, outcome_text: str, labels: CaseLabels) -> None:
         if not self._config.enable_cache:
             return
         key = self._cache_key(case_number, outcome_text)
