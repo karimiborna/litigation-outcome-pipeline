@@ -217,9 +217,11 @@ def enumerate(start: str, end: str, delay: float, verbose: bool) -> None:
     from scraper.config import ScraperConfig
     from scraper.enumerator import CaseEnumerator, ValidCasesStore, parse_case_range
     from scraper.session import get_session_id
+    from scraper.session_manager import start_keepalive
 
     config = ScraperConfig()
     session_id = get_session_id(config)
+    start_keepalive(session_id)
 
     case_numbers = parse_case_range(start, end)
     console.print(f"\n[bold]Enumerating {len(case_numbers)} case numbers[/bold]")
@@ -265,9 +267,11 @@ def download_cases(no_extract: bool, verbose: bool) -> None:
     from scraper.extractor import extract_text
     from scraper.rate_limiter import RateLimiter
     from scraper.session import SessionExpiredError, get_session_id, prompt_refresh
+    from scraper.session_manager import start_keepalive
 
     config = ScraperConfig()
     session_id = get_session_id(config)
+    start_keepalive(session_id)
     store = ValidCasesStore()
     valid = store.valid_cases
 
@@ -355,9 +359,7 @@ def download_cases(no_extract: bool, verbose: bool) -> None:
 
         if cases_done % 10 == 0:
             save_manifest(manifest, manifest_path)
-            console.print(
-                f"  Progress: {cases_done}/{len(valid)} cases, {total_pdfs} PDFs"
-            )
+            console.print(f"  Progress: {cases_done}/{len(valid)} cases, {total_pdfs} PDFs")
 
     save_manifest(manifest, manifest_path)
 

@@ -18,10 +18,7 @@ from scraper.session import SessionExpiredError
 
 class TestParseCaseNumber:
     def test_extracts_from_html(self):
-        html = (
-            '<A HREF="CaseInfo.dll?CaseNum=CSM26871146&SessionID=ABC123">'
-            "CSM-26-871146</A>"
-        )
+        html = '<A HREF="CaseInfo.dll?CaseNum=CSM26871146&SessionID=ABC123">CSM-26-871146</A>'
         assert parse_case_number(html) == "CSM26871146"
 
     def test_different_case(self):

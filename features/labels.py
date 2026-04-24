@@ -46,7 +46,7 @@ Analyze the following outcome documents for case {case_number} and extract the c
 Extract the following as JSON:
 
 {{
-    "outcome": <one of: "plaintiff_win", "defendant_win", "dismissed", "settled", null>,
+    "outcome": <one of: "plaintiff_win", "defendant_win", "partial_win", "dismissed", "settled", null>,
     "dismissal_type": <one of: "with_prejudice", "without_prejudice", null>,
     "amount_awarded_principal": <float dollar amount awarded as principal, 0.0 if none, null if unclear>,
     "amount_awarded_costs": <float dollar amount for costs, 0.0 if none, null if unclear>,
@@ -67,7 +67,7 @@ class CaseLabels(BaseModel):
     case_number: str
     outcome: str | None = Field(
         None,
-        description="plaintiff_win, defendant_win, dismissed, or settled",
+        description="plaintiff_win, defendant_win, partial_win, dismissed, or settled",
     )
     dismissal_type: str | None = None
     amount_awarded_principal: float | None = None
@@ -140,9 +140,7 @@ class LabelExtractor:
             self._save_cache(case_number, outcome_text, labels)
         return labels
 
-    def extract_batch(
-        self, case_numbers: list[str], txt_dir: Path
-    ) -> dict[str, CaseLabels]:
+    def extract_batch(self, case_numbers: list[str], txt_dir: Path) -> dict[str, CaseLabels]:
         """Extract labels for multiple cases. Returns {case_number: CaseLabels}."""
         results: dict[str, CaseLabels] = {}
         for case_number in case_numbers:
@@ -154,11 +152,20 @@ class LabelExtractor:
                 logger.exception("Label extraction failed for %s", case_number)
         return results
 
+    @staticmethod
+    def _smart_truncate(text: str, max_chars: int = 8000) -> str:
+        """Keep the start and end of the text, since rulings tend to appear last."""
+        if len(text) <= max_chars:
+            return text
+        head = max_chars // 3
+        tail = max_chars - head
+        return text[:head] + "\n\n[... middle truncated ...]\n\n" + text[-tail:]
+
     def _call_llm(self, case_number: str, outcome_text: str) -> CaseLabels | None:
         """Send outcome documents to the LLM and parse the response."""
         user_content = LABEL_EXTRACTION_USER.format(
             case_number=case_number,
-            outcome_text=outcome_text[:8000],
+            outcome_text=self._smart_truncate(outcome_text),
         )
 
         try:
@@ -170,6 +177,7 @@ class LabelExtractor:
                 ],
                 temperature=0.0,
                 max_tokens=512,
+                response_format={"type": "json_object"},
             )
         except Exception:
             logger.exception("LLM call failed for %s", case_number)
@@ -180,10 +188,6 @@ class LabelExtractor:
 
     def _parse_response(self, case_number: str, content: str) -> CaseLabels | None:
         content = content.strip()
-        if content.startswith("```"):
-            lines = content.split("\n")
-            content = "\n".join(lines[1:-1])
-
         try:
             raw = json.loads(content)
             raw["case_number"] = case_number
@@ -209,9 +213,7 @@ class LabelExtractor:
         except Exception:
             return None
 
-    def _save_cache(
-        self, case_number: str, outcome_text: str, labels: CaseLabels
-    ) -> None:
+    def _save_cache(self, case_number: str, outcome_text: str, labels: CaseLabels) -> None:
         if not self._config.enable_cache:
             return
         key = self._cache_key(case_number, outcome_text)

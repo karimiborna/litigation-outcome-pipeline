@@ -64,6 +64,7 @@ class FeatureExtractor:
             cause_of_action=case.cause_of_action,
             filing_date=case.filing_date.isoformat(),
             case_text=case.full_text,
+            user_side=case.user_side,
         )
 
         body: dict[str, Any] = {
@@ -103,29 +104,72 @@ class FeatureExtractor:
         return LLMFeatures.model_validate(raw)
 
     def _build_feature_vector(self, case: ProcessedCase, llm: LLMFeatures) -> FeatureVector:
-        """Merge LLM-extracted features with case metadata."""
+        """Merge LLM-extracted features with derived metadata.
+
+        Every LLM-origin field is sourced directly from LLMFeatures; the only
+        metadata touched here is the derived text_length/document_count and the
+        user_is_plaintiff indicator (from ProcessedCase.user_side).
+        """
         return FeatureVector(
             case_number=case.case_number,
             feature_version=self._config.feature_version,
-            evidence_strength=llm.evidence_strength,
-            contract_present=llm.contract_present,
-            argument_clarity_plaintiff=llm.argument_clarity_plaintiff,
-            argument_clarity_defendant=llm.argument_clarity_defendant,
+            user_is_plaintiff=(case.user_side == "plaintiff"),
+            # Classification + amount
             claim_category=llm.claim_category,
             monetary_amount_claimed=llm.monetary_amount_claimed or case.claim_amount,
-            prior_attempts_to_resolve=llm.prior_attempts_to_resolve,
-            witness_count=llm.witness_count,
-            documentary_evidence=llm.documentary_evidence,
-            timeline_clarity=llm.timeline_clarity,
-            legal_representation_plaintiff=llm.legal_representation_plaintiff,
-            legal_representation_defendant=llm.legal_representation_defendant,
+            # Representation
+            user_has_attorney=llm.user_has_attorney,
+            opposing_party_has_attorney=llm.opposing_party_has_attorney,
+            opposing_party_filed_response_documents=llm.opposing_party_filed_response_documents,
+            # Counter-filings / contract presence
             counterclaim_present=llm.counterclaim_present,
-            default_judgment_likely=llm.default_judgment_likely,
-            plaintiff_count=case.plaintiff_count,
-            defendant_count=case.defendant_count,
-            has_attorney_plaintiff=case.has_attorney_plaintiff,
-            has_attorney_defendant=case.has_attorney_defendant,
-            cause_of_action=case.cause_of_action,
+            contract_present=llm.contract_present,
+            # Evidence
+            has_photos_or_physical_evidence=llm.has_photos_or_physical_evidence,
+            has_receipts_or_financial_records=llm.has_receipts_or_financial_records,
+            has_written_communications=llm.has_written_communications,
+            has_witness_statements=llm.has_witness_statements,
+            has_signed_contract_attached=llm.has_signed_contract_attached,
+            has_repair_or_replacement_estimate=llm.has_repair_or_replacement_estimate,
+            has_police_report=llm.has_police_report,
+            has_medical_records=llm.has_medical_records,
+            has_expert_assessment=llm.has_expert_assessment,
+            has_invoices_or_billing_records=llm.has_invoices_or_billing_records,
+            # Argument content
+            argument_cites_specific_dates=llm.argument_cites_specific_dates,
+            argument_cites_specific_dollar_amounts=llm.argument_cites_specific_dollar_amounts,
+            argument_cites_contract_or_document=llm.argument_cites_contract_or_document,
+            argument_has_chronological_timeline=llm.argument_has_chronological_timeline,
+            argument_names_specific_witnesses=llm.argument_names_specific_witnesses,
+            argument_quantifies_each_damage_component=llm.argument_quantifies_each_damage_component,
+            argument_cites_statute_or_legal_basis=llm.argument_cites_statute_or_legal_basis,
+            argument_identifies_specific_location=llm.argument_identifies_specific_location,
+            # Procedural
+            sent_written_demand_letter=llm.sent_written_demand_letter,
+            sent_certified_mail=llm.sent_certified_mail,
+            gave_opportunity_to_cure=llm.gave_opportunity_to_cure,
+            attempted_mediation=llm.attempted_mediation,
+            # Contract detail
+            contract_is_written=llm.contract_is_written,
+            contract_is_signed_by_both_parties=llm.contract_is_signed_by_both_parties,
+            contract_specifies_deadline_or_term=llm.contract_specifies_deadline_or_term,
+            contract_specifies_payment_amount=llm.contract_specifies_payment_amount,
+            # Damages
+            damages_include_out_of_pocket_costs=llm.damages_include_out_of_pocket_costs,
+            damages_include_lost_wages=llm.damages_include_lost_wages,
+            damages_include_property_value_loss=llm.damages_include_property_value_loss,
+            damages_are_ongoing=llm.damages_are_ongoing,
+            damages_have_third_party_valuation=llm.damages_have_third_party_valuation,
+            # Jurisdictional
+            claim_amount_stated_in_dollars=llm.claim_amount_stated_in_dollars,
+            claim_amount_is_within_small_claims_limit=llm.claim_amount_is_within_small_claims_limit,
+            user_seeks_interest=llm.user_seeks_interest,
+            user_seeks_court_costs=llm.user_seeks_court_costs,
+            # Counts
+            plaintiff_count=llm.plaintiff_count,
+            defendant_count=llm.defendant_count,
+            witness_count=llm.witness_count,
+            # Derived
             text_length=len(case.full_text),
             document_count=len(case.document_texts),
         )

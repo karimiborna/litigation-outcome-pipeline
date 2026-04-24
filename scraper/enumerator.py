@@ -72,8 +72,10 @@ class ValidCasesStore:
 
     def save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
+        not_found = sorted(self._probed - set(self._valid.keys()))
         data = {
             "valid": self._valid,
+            "not_found": not_found,
             "probed": sorted(self._probed),
         }
         self._path.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -145,10 +147,15 @@ class CaseEnumerator:
                 if doc_count > 0:
                     stats["found"] += 1
                     logger.info("  FOUND: %s (%d entries)", case_num, doc_count)
+                else:
+                    logger.info("  probing %s ... not found", case_num)
 
             except SessionExpiredError:
                 self._store.save()
                 self._session_id = prompt_refresh()
+                from scraper.session_manager import start_keepalive
+
+                start_keepalive(self._session_id)
                 time.sleep(self._probe_delay)
                 doc_count = probe_case_exists(case_num, self._session_id, self._config)
                 self._store.mark_probed(case_num, doc_count)

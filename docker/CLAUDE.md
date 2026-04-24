@@ -18,4 +18,10 @@ Containerization configuration for reproducible builds and deployments.
 - Pin dependency versions for reproducibility
 - Secrets (API keys for LLM, cloud credentials) must NOT be baked into images — use env vars or secret managers
 - Docker Compose should replicate the production topology locally
-- Images are built and pushed by GitHub Actions (see `.github/workflows/`)
+- Images are built and pushed by GitHub Actions (see `.github/workflows/docker-build.yml`)
+
+## Inference image (`Dockerfile.inference`)
+
+- Builds with **`pip install .`** from repo **`pyproject.toml`** so all package dependencies match the project (not a hand-picked subset).
+- **CI image names:** `docker/metadata-action` sets `images:` to `ghcr.io/${{ github.repository }}-${{ matrix.service }}` — e.g. **`ghcr.io/<owner>/<repo>-inference`** for the API (see workflow matrix `service: inference`). README uses placeholder **`litigation-inference`** for manual `docker build -t` examples.
+- **Runtime:** container must reach **`MLFLOW_TRACKING_URI`** (not `localhost` unless MLflow is in the same Docker network). **`LLM_API_KEY`** required for `/predict` as implemented.
