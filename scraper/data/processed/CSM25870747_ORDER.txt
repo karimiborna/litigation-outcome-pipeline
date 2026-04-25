@@ -1,0 +1,24 @@
+**Extracted Text from San Francisco Small Claims Court Document**
+
+*   **Case Information:**
+    *   **Case Number:** CSM-25-870747
+    *   **Court:** San Francisco County Superior Court
+    *   **Date:** December 19, 2025
+*   **Parties:**
+    *   **Plaintiff:** Essayas Gezahagne
+    *   **Defendant:** TransUnion LLC et al.
+*   **Claim Amount:** Not specified
+*   **Rulings:** Not specified
+*   **Other Information:**
+    *   **Order Regarding Remote Appearance:** The court makes the following orders regarding remote appearances:
+        *   This order applies to the proceeding described below, including on any later dates if the proceeding is continued:
+            *   Type of proceeding: Small claims Hearing
+            *   Set on (date): 12/29/2025 at (time): 1:30 PM in (department): 506
+        *   Participant to appear in person: The following persons are required to appear or testify in person: Name: Danielle Nowlin Role in Case: Participant may appear through remote technology.
+        *   If the following technology is not used, an in-person appearance is required. (See the court's website for specific information about the platforms used and how to appear remotely.)
+            *   i. videoconference only
+            *   ii. audio only (including telephone)
+            *   iii. videoconference or audio
+        *   Other Orders: Not specified
+*   **Judge's Signature:** Not specified
+*   **Clerk's Signature:** Not specified

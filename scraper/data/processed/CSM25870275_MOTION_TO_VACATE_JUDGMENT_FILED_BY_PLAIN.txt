@@ -1,0 +1,44 @@
+This is a page from a San Francisco small claims court document. Extract all text exactly as it appears. Include party names, dates, claim amounts, rulings, and any other information on the page. Output plain text only.
+
+--- PAGE BREAK ---
+
+Superior Court of California, County of San Francisco - Small Claims
+Case No. CSM-25-870275
+Property: 204 Day Street, San Francisco, CA 94131
+Appellant: Dale (DJ) Aguirre   Respondents: Ching Li Wong; Tim Wang
+
+APPELLANT'S STATEMENT
+I, Dale (DJ) Aguirre, appeal the judgment entered in favor of Defendants Ching Li Wong and Tim Wang on September 24, 2025. The court overlooked material facts and evidence that demonstrate the Defendants' failure to maintain a habitable home, their bad-faith withholding of my $3,200 security deposit, and a pattern of evasion and negligence that caused serious health, financial, and emotional harm to me and my family.
+
+REQUESTED RELIEF
+I respectfully request that the Court reverse the judgment and award a total of $10,000, which includes the $3,200 security deposit, reimbursement for court filing and process-server fees, and damages for the Defendants' bad-faith withholding of funds and deliberate evasion of service. The Defendants ignored four to five service attempts and failed to respond to certified mail, forcing personal service through their restaurant manager downstairs - evidence of intent to avoid legal responsibility.
+
+FACTUAL BACKGROUND AND GROUNDS FOR APPEAL
+1. Move-In Conditions and Early Issues
+The apartment was not deep cleaned before my move-in. The kitchen utilities were unsanitary, the bathroom tiles were dirty, and debris and dust buildup were found under furniture and rugs. The walls had not been painted in years, and leftover items in cupboards revealed the unit had been used as an Airbnb prior to my tenancy. The Wangs asked me to sign that the unit was in 'good condition' before I had even inspected it. They also prorated and billed me rent for moving in early under the pretense of generosity, then immediately left for several months abroad.
+
+2. Refusal to Maintain or Reimburse for Improvements
+I requested permission to repaint due to scuffed walls. The Wangs agreed only if I used their preferred colors, refused to reimburse any supplies, and declined to cover the costs. Instead, I used removable peel-and-stick wallpaper for my and my children's rooms. The Wangs complimented it during inspections and never objected until after move-out.
+
+3. Non-Functional Refrigerator and Food Loss
+The refrigerator door would not close or seal, making it impossible to keep food cold. The Wang brothers repeatedly attempted to fix it themselves using adhesive sealers found on YouTube. Each attempt failed within days. For months, the refrigerator remained partially open, causing food to spoil and the electric bill to rise. While cleaning behind it, I discovered a service tag showing the refrigerator had last been serviced in 1986 (see Exhibit D-2). After I confronted them with that fact (see Exhibit D-2 email), they finally replaced the refrigerator with a used off-market model. This clearly violated California Civil Code § 1941.1, requiring functional appliances in a habitable unit.
+
+--- PAGE BREAK ---
+
+4. Garbage Access, Ant Infestation, and Neighbor Complaint
+For months I had no access to trash bins. The Wangs told me to knock on another tenant's door to use the shared garage, which was humiliating and unrealistic while raising two children. When the Wangs bought a new Tesla and began parking it in the garage, there was no longer space for the bins. They left them on the sidewalk under my window, creating odors and ant trails into my unit. A neighbor across the street filed a city complaint because it is illegal to leave bins outside daily. The Wangs ignored the problem until months later when they purchased outdoor crates. (See Exhibit D-4 - Email chain and neighbor complaint reference.)
+
+5. Pest Infestation, Health Impact, and Hotel Stays
+After ongoing sanitation issues, visible pests appeared. Despite repeated requests, the Wangs never hired a qualified pest specialist. They dismissed the issue as 'pinworms' and blamed my family's hygiene (see Exhibit A). When they finally contacted the San Francisco Department of Public Health, inspectors stated they were not equipped to handle this kind of infestation and asked why the landlord was absent. During this time, I was hospitalized with a staph infection that doctors linked to unsanitary conditions (see Exhibit B). I began staying in hotels with my children for safety (see Exhibit A-2 - hotel receipts). The Wangs provided no help or rent abatement.
+
+6. Improper Deposit Deductions and Conflict of Interest
+When I moved out, I left paint and supplies to cover minor touch-ups. The Wangs charged over $2,500 for full repainting, claiming peel-and-stick wallpaper caused holes. The invoice, created in Microsoft Word, lists 'Guardian Construction San Mateo' but lacks a signature or license number. I discovered that Henry Wang, a relative of Ms. Wang, owns that company (see Exhibit F). This is a clear conflict of interest and an inflated, bad-faith charge intended to withhold my deposit unlawfully.
+
+7. False Claim of Missing Furnishings
+The Wangs accused me of keeping furniture from the furnished unit. However, email correspondence from May 4 2023 shows Tim Wang authorized me to "put furniture outside." (See Exhibit E.) NestCam screenshots confirm Tim's brother and I moved the couch and table into the landlord's garage. This claim was disproven before trial but repeated in their itemized deductions.
+
+8. Evasion of Service and Continued Bad Faith
+When attempting to serve them after judgment, I made four to five attempts. They did not answer the door or respond to certified mail. I was forced to serve papers through their restaurant manager at the business they own downstairs (see Exhibit H). Their avoidance of service further shows bad faith and disregard for legal obligations.
+
+9. Emotional and Financial Impact
+Throughout this tenancy I was a single father managing custody issues and unemployment. The Wangs were aware of my hardship yet continued to withhold my deposit and fabricate charges. Their negligence caused direct financial loss, health issues, and significant emotional stress.

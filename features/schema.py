@@ -87,6 +87,7 @@ class FeatureVector(BaseModel):
 
     case_number: str
     feature_version: str = "v2"
+    missing_features: bool = False
 
     # User-side indicator (derived, not LLM-extracted)
     user_is_plaintiff: bool | None = None
@@ -186,6 +187,8 @@ class FeatureVector(BaseModel):
         return {
             # User-side indicator
             "user_is_plaintiff": _bool(self.user_is_plaintiff),
+            # Missingness flag
+            "missing_features": _bool(self.missing_features),
             # Amount
             "monetary_amount_claimed": _float(self.monetary_amount_claimed),
             # Representation

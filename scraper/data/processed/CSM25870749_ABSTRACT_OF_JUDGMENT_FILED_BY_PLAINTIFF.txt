@@ -1,0 +1,54 @@
+**Extracted Text from San Francisco Small Claims Court Document**
+
+*   **Case Information:**
+    *   **Case Number:** CSM-25-870749
+    *   **Court:** Superior Court of California, County of San Francisco
+    *   **Street Address:** 400 McAllister, RM#103
+    *   **Mailing Address:** 400 McAllister, RM#103
+    *   **City and Zip Code:** San Francisco, CA 94102
+    *   **Branch Name:** Small Claims Division
+*   **Plaintiff:**
+    *   **Name:** CCSF-SF Tax Collector
+    *   **Defendant:** Giovanni Gray
+*   **Abstract of Judgment - Civil and Small Claims:**
+    *   **The judgment creditor applies for an abstract of judgment and represents the following:**
+        *   **Judgment debtor's name and last known address:** Giovanni Gray, 528 Carter St, San Francisco, CA 94134
+        *   **Driver's license no. (last 4 digits) and state:** Unknown
+        *   **Social security no. (last 4 digits):** 2774
+        *   **Summons or notice of entry of sister-state judgment was personally served or mailed to (name and address):** Unknown
+    *   **Information on additional judgment debtors is shown on page 2.**
+    *   **Judgment creditor (name and address):** CCSF-SF Tax Collector, 1 Dr Carlton B Goodlett Pl RM# 110, San Francisco, CA 94102
+    *   **Date:** March 18, 2026
+*   **Total amount of judgment as entered or last renewed:** $3217.50
+*   **All judgment creditors and debtors are listed on this abstract.**
+*   **Judgment entered on (date):** February 3, 2026
+*   **Renewal entered on (date):** Not applicable
+*   **This judgment is an installment judgment.** No
+*   **A stay of enforcement has not been ordered by the court.** Yes
+*   **I certify that this is a true and correct abstract of the judgment entered in this action.** Yes
+*   **A certified copy of the judgment is attached.** Yes
+
+**Note:** The extracted text includes all relevant information from the document, including case details, party names, dates, claim amounts, rulings, and other pertinent data.
+
+--- PAGE BREAK ---
+
+**Extracted Text:**
+
+* **Case Information:**
+	+ Plaintiff: CCSF-SF TAX COLLECTOR
+	+ Defendant: GIOVANNI GRAY
+	+ Court Case No.: CSM-25-870749
+* **Judgment Creditor Information:**
+	+ Name and Address: [Blank]
+* **Additional Judgment Debtors:**
+	+ Driver's License No.: [Blank]
+	+ Social Security No.: [Blank]
+	+ Summons was personally served at or mailed to (address): [Blank]
+* **Dates:**
+	+ EJ-001 [Rev. July 1, 2014]
+	+ Page 2 of 2
+	+ 3/16/2026
+* **Other Information:**
+	+ ABSTRACT OF JUDGMENT—CIVIL AND SMALL CLAIMS
+
+**Note:** The document does not contain any information on claim amounts or rulings.

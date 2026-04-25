@@ -1,0 +1,22 @@
+The document is a San Francisco small claims court document, specifically an Acknowledgment of Satisfaction of Judgment form. The text on the page includes:
+
+* **Case Information:**
+	+ Case Number: CSM-25-870752
+	+ Case Name: Katharine Perdomo vs. Swicked SF Cooperation
+* **Party Information:**
+	+ Plaintiff: Katharine Perdomo
+	+ Defendant: Swicked SF Cooperation
+* **Judgment Information:**
+	+ Judgment Date: January 9, 2026
+	+ Judgment Amount: Not specified
+* **Acknowledgment of Satisfaction:**
+	+ The judgment has been fully paid or satisfied as to all judgment debtors.
+	+ The judgment has been fully paid or satisfied as to these judgment debtors only (names and addresses of judgment debtors who have fully paid or satisfied judgment): Katharine Perdomo
+* **Declaration:**
+	+ I declare under penalty of perjury under the laws of the State of California that the information above is true and correct.
+* **Signature:**
+	+ Signature of Katharine Perdomo
+* **Date:**
+	+ Date of signature: January 20, 2026
+
+Note that the judgment amount is not specified on this document.

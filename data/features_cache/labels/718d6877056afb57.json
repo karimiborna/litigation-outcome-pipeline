@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870097",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 12500.0,
+  "amount_awarded_costs": 75.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": true,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": false,
+  "judgment_date": "2025-08-14",
+  "outcome_summary": "Judgment in favor of the plaintiff, Pavel Niderman, against the defendants Christopher Jansons and Magda Jansons for a total of $12,575.00."
+}

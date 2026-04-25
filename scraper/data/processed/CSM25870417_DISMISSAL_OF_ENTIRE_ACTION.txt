@@ -1,0 +1,31 @@
+The document is a Request for Dismissal form from the San Francisco County Superior Court, specifically for a small claims case. The key information extracted from the page includes:
+
+* **Case Information:**
+	+ Case Number: 870417
+	+ Court: San Francisco County Superior Court
+	+ Date Filed: October 27, 2025
+* **Party Names:**
+	+ Plaintiff/Petitioner: James Bair ETAL
+	+ Defendant/Respondent: Mark Maerowitz ETAL
+* **Claim Amount:**
+	+ Not specified on this form
+* **Ruling:**
+	+ The case was dismissed without prejudice and with the court retaining jurisdiction (Code Civ. Proc. § 664.6)
+* **Other Information:**
+	+ The clerk's stamp indicates that the form was filed on October 27, 2025
+	+ The form was signed by James S. Bair, the attorney for the plaintiff/petitioner
+
+Note that some information, such as the claim amount, is not present on this specific form.
+
+--- PAGE BREAK ---
+
+The document is a court form titled "COURT'S RECOVERY OF WAIVED COURT FEES AND COSTS" with the case number "CIV-110". The form is dated January 1, 2025, and is related to a small claims court case in San Francisco. 
+
+The form includes the following information:
+
+*   **Case Number:** CIV-110
+*   **Date:** January 1, 2025
+*   **Court:** San Francisco Small Claims Court
+*   **Form Title:** COURT'S RECOVERY OF WAIVED COURT FEES AND COSTS
+
+The form does not contain any party names, claim amounts, or rulings. It appears to be a blank form that has not been completed or filed with the court.

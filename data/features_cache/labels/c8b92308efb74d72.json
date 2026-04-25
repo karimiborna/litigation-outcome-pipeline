@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870101",
+  "outcome": "defendant_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 0.0,
+  "amount_awarded_costs": 0.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": null,
+  "has_attorney_plaintiff": null,
+  "has_attorney_defendant": null,
+  "judgment_date": "2025-08-15",
+  "outcome_summary": "Judgment in favor of the Defendant due to Plaintiff's failure to meet the burden of proof."
+}

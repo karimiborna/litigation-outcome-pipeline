@@ -1,0 +1,29 @@
+**Document Text Extraction**
+
+The document is a small claims court filing from the Superior Court of California, County of San Francisco. The text on the page includes:
+
+* **Case Information:**
+	+ Case Number: CSM-25-870622 CV
+	+ Hearing Date: December 11, 2025
+	+ Time: 1:30 PM
+	+ Department: 506
+* **Party Names:**
+	+ Plaintiff/Petitioner: Karen Oliveres
+	+ Defendant/Respondent: Bahar Azin
+* **Claim Amount:**
+	+ No claim amount is specified in the document.
+* **Rulings:**
+	+ The defendant's request to appear by Zoom at the hearing scheduled for December 11, 2025, is hereby GRANTED.
+* **Other Information:**
+	+ The plaintiff shall call the court's approved vendor to set up the telephonic appearance and pay associated fees.
+	+ The plaintiff shall notify the defendant of this order by any reasonable means, including telephone, fax, or mail.
+	+ The plaintiff shall send, in advance of the hearing date, any documents, pictures, or other evidence concerning the case that you wish the court to consider, so that the court can review them during your hearing.
+	+ On the day of your hearing, be prepared to discuss your case just as if you were present in court.
+
+**Signature Block:**
+
+* Judge of the Superior Court/Judicial Officer: John M. Inve
+
+**Date:**
+
+* December 9, 2025

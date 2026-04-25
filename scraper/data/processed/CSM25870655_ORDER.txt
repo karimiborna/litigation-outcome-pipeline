@@ -1,0 +1,24 @@
+The document is a court order to postpone a trial in a small claims case. The text on the page includes:
+
+* **Case Information:**
+	+ Case Number: CSM25870655
+	+ Case Name: Zain Iftikhar v. Capital One, National Association
+* **Party Information:**
+	+ Plaintiff: Zain Iftikhar
+	+ Defendant: Capital One, National Association
+* **Court Information:**
+	+ Court Name: Superior Court of California, County of San Francisco
+	+ Court Address: Civic Center Courthouse, 400 McAllister St., San Francisco, CA 94102
+* **Trial Information:**
+	+ Original Trial Date: January 22, 2026
+	+ New Trial Date: Not specified
+* **Postponement Request:**
+	+ Requested by: Capital One, National Association
+	+ Reason for postponement: Not specified
+* **Ruling:**
+	+ The request to postpone the trial is approved
+* **Other Information:**
+	+ Clerk's stamp: FILED, San Francisco County Superior Court, Dec 08 2025
+	+ Judicial Council of California, courts.ca.gov, Rev. July 1, 2025, Optional Form, Code of Civil Procedure, § 116.570
+
+Note that some information, such as the claim amount and specific rulings, is not present on this page.
