@@ -1,0 +1,11 @@
+{
+  "buildCommand": "mkdir -p public && cp api/static/lexratio.html public/index.html && echo 'Build complete'",
+  "outputDirectory": "public",
+  "installCommand": "echo 'No dependencies needed for static site'",
+  "framework": "static",
+  "public": true,
+  "env": {
+    "REACT_APP_API_URL": "@react_app_api_url"
+  }
+}
+

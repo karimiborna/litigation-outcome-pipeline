@@ -1,0 +1,19 @@
+{
+  "name": "litigation-outcome-pipeline-frontend",
+  "version": "0.1.0",
+  "description": "LexRatio - Small Claims Court Advisor (Static Frontend)",
+  "private": true,
+  "scripts": {
+    "build": "mkdir -p public && cp api/static/lexratio.html public/index.html",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "small-claims",
+    "litigation",
+    "court-advisor",
+    "case-analysis"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+

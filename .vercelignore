@@ -1,0 +1,44 @@
+# Ignore everything except the static HTML
+**
+!api/static/lexratio.html
+!package.json
+!vercel.json
+
+# Python & virtual environments
+.venv
+venv
+env
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+
+# Data & models (huge directories)
+mlruns
+data
+models
+*.pth
+*.pkl
+*.joblib
+
+# Development
+.git
+.gitignore
+.env.local
+.env.*.local
+.vscode
+.idea
+.DS_Store
+
+# Test & build
+tests
+notebooks
+build
+dist
+node_modules
+public
+
+# IDE
+*.swp
+*.swo
+*~

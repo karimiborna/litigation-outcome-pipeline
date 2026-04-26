@@ -87,3 +87,36 @@ class BatchPredictionRequest(BaseModel):
 class BatchPredictionResponse(BaseModel):
     predictions: list[PredictionResponse]
     total: int
+
+
+class LexRatioAnalysisRequest(BaseModel):
+    """Request for LexRatio small claims analysis."""
+
+    case_text: str = Field(..., min_length=10)
+    case_title: str | None = None
+    cause_of_action: str | None = None
+    claim_amount: float | None = None
+
+
+class LexRatioSignals(BaseModel):
+    """Signal detection for case strengths."""
+
+    has_written_evidence: bool | None = None
+    sent_demand_letter: bool | None = None
+    has_contract: bool | None = None
+    defendant_responded: bool | None = None
+    has_witnesses: bool | None = None
+    damages_itemized: bool | None = None
+
+
+class LexRatioAnalysisResponse(BaseModel):
+    """Response with small claims court analysis."""
+
+    win_probability: int = Field(..., ge=0, le=100)
+    expected_award: float
+    confidence: str = Field(..., pattern="^(high|medium|low)$")
+    verdict_summary: str
+    strengths: list[str]
+    weaknesses: list[str]
+    advice: str
+    signals: LexRatioSignals

@@ -6,8 +6,11 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import date
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.dependencies import app_state
 from api.schemas import (
@@ -17,6 +20,9 @@ from api.schemas import (
     CounterfactualRequest,
     CounterfactualResponse,
     HealthResponse,
+    LexRatioAnalysisRequest,
+    LexRatioAnalysisResponse,
+    LexRatioSignals,
     PredictionRequest,
     PredictionResponse,
     RootResponse,
@@ -48,6 +54,27 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add CORS middleware to allow frontend requests from Vercel and localhost
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+        "https://*.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount static files directory for LexRatio frontend
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    logger.info("Static files mounted from %s", static_dir)
+
 
 @app.get("/", response_model=RootResponse)
 async def root() -> RootResponse:
@@ -55,6 +82,18 @@ async def root() -> RootResponse:
         message="Welcome to the Litigation Outcome Predictor API.",
         service="litigation-outcome-pipeline",
     )
+
+
+@app.get("/lexratio")
+async def lexratio_ui():
+    """Serve the LexRatio UI."""
+    from fastapi.responses import FileResponse
+    static_dir = Path(__file__).parent / "static"
+    lexratio_file = static_dir / "lexratio.html"
+    if not lexratio_file.exists():
+        raise HTTPException(status_code=404, detail="LexRatio UI not available")
+    return FileResponse(lexratio_file, media_type="text/html")
+
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -171,6 +210,62 @@ async def counterfactual(request: CounterfactualRequest) -> CounterfactualRespon
     )
 
 
+@app.post("/api/analyze-lexratio", response_model=LexRatioAnalysisResponse)
+async def analyze_lexratio(request: LexRatioAnalysisRequest) -> LexRatioAnalysisResponse:
+    """Analyze a small claims case for LexRatio frontend."""
+    if not app_state.models_loaded:
+        raise HTTPException(status_code=503, detail="Models not loaded")
+    if app_state.feature_extractor is None:
+        raise HTTPException(status_code=503, detail="Feature extractor not initialized")
+
+    # Build a case from the request
+    case = ProcessedCase(
+        case_number="LEXRATIO_UNKNOWN",
+        case_title=request.case_title or "Small Claims Case",
+        cause_of_action=request.cause_of_action or "other",
+        filing_date=date.today(),
+        full_text=request.case_text,
+        claim_amount=request.claim_amount,
+    )
+
+    # Extract features and run prediction
+    feature_vector = await app_state.feature_extractor.extract(case)
+    prediction = await asyncio.to_thread(_run_prediction_sync, feature_vector, None)
+
+    # Analyze case text for signals
+    text_lower = request.case_text.lower()
+    signals = LexRatioSignals(
+        has_written_evidence=_detect_written_evidence(text_lower),
+        sent_demand_letter=_detect_demand_letter(text_lower),
+        has_contract=_detect_contract(text_lower),
+        defendant_responded=_detect_defendant_response(text_lower),
+        has_witnesses=_detect_witnesses(text_lower),
+        damages_itemized=_detect_itemized_damages(text_lower),
+    )
+
+    # Generate strengths and weaknesses based on signals
+    strengths = _generate_strengths(signals, prediction.win_probability)
+    weaknesses = _generate_weaknesses(signals, prediction.win_probability)
+
+    # Generate verdict summary
+    verdict = _generate_verdict_summary(prediction.win_probability, prediction.expected_monetary_outcome)
+
+    # Generate advice
+    advice = _generate_advice(signals, prediction.win_probability, strengths, weaknesses)
+
+    return LexRatioAnalysisResponse(
+        win_probability=int(round(prediction.win_probability * 100)),
+        expected_award=prediction.expected_monetary_outcome,
+        confidence=prediction.confidence,
+        verdict_summary=verdict,
+        strengths=strengths,
+        weaknesses=weaknesses,
+        advice=advice,
+        signals=signals,
+    )
+
+
+
 def _build_processed_case(request: PredictionRequest) -> ProcessedCase:
     return ProcessedCase(
         case_number=request.case_number or "UNKNOWN",
@@ -216,3 +311,123 @@ def _run_prediction_sync(vector: FeatureVector, case_number: str | None) -> Pred
         expected_monetary_outcome=round(monetary, 2),
         confidence=confidence,
     )
+
+
+def _detect_written_evidence(text: str) -> bool | None:
+    """Check for mentions of written evidence."""
+    keywords = ["contract", "receipt", "email", "text message", "invoice", "letter", "document", "agreement"]
+    return any(kw in text for kw in keywords) if text else None
+
+
+def _detect_demand_letter(text: str) -> bool | None:
+    """Check for demand letter or notice."""
+    keywords = ["demand letter", "sent demand", "certified mail", "notice", "demand for payment"]
+    return any(kw in text for kw in keywords) if text else None
+
+
+def _detect_contract(text: str) -> bool | None:
+    """Check for contract mention."""
+    keywords = ["contract", "agreement", "terms", "signed"]
+    return any(kw in text for kw in keywords) if text else None
+
+
+def _detect_defendant_response(text: str) -> bool | None:
+    """Check for defendant response."""
+    keywords = ["defendant respond", "defendant said", "they admitted", "they denied", "defendant claim", "in response"]
+    return any(kw in text for kw in keywords) if text else None
+
+
+def _detect_witnesses(text: str) -> bool | None:
+    """Check for witnesses."""
+    keywords = ["witness", "witnessed", "saw", "observed", "present", "testif"]
+    return any(kw in text for kw in keywords) if text else None
+
+
+def _detect_itemized_damages(text: str) -> bool | None:
+    """Check for itemized damages."""
+    keywords = ["itemized", "$", "amount", "cost", "repair", "replacement"]
+    return any(kw in text for kw in keywords) if text else None
+
+
+def _generate_strengths(signals: LexRatioSignals, win_prob: float) -> list[str]:
+    """Generate case strengths based on signals."""
+    strengths = []
+
+    if signals.has_written_evidence:
+        strengths.append("Documentary evidence supports claim")
+
+    if signals.has_contract:
+        strengths.append("Written contract establishes obligations")
+
+    if signals.sent_demand_letter:
+        strengths.append("Proper notice provided via demand letter")
+
+    if signals.has_witnesses:
+        strengths.append("Corroborating witness testimony available")
+
+    if signals.damages_itemized:
+        strengths.append("Damages clearly itemized and documented")
+
+    if not strengths and win_prob > 0.5:
+        strengths.append("Reasonable claim with supportable facts")
+
+    return strengths[:4]  # Return up to 4
+
+
+def _generate_weaknesses(signals: LexRatioSignals, win_prob: float) -> list[str]:
+    """Generate case weaknesses based on signals."""
+    weaknesses = []
+
+    if not signals.has_written_evidence:
+        weaknesses.append("Limited documentary evidence")
+
+    if not signals.has_contract:
+        weaknesses.append("No written agreement to reference")
+
+    if not signals.sent_demand_letter:
+        weaknesses.append("No formal demand made before filing")
+
+    if not signals.defendant_responded:
+        weaknesses.append("Lack of defendant's position on record")
+
+    if win_prob < 0.5 and not signals.damages_itemized:
+        weaknesses.append("Damages not clearly quantified")
+
+    return weaknesses[:4]  # Return up to 4
+
+
+def _generate_verdict_summary(win_prob: float, expected_award: float) -> str:
+    """Generate a plain-English summary of the verdict."""
+    if win_prob >= 0.75:
+        outcome = "likely to prevail"
+    elif win_prob >= 0.6:
+        outcome = "moderately likely to prevail"
+    elif win_prob >= 0.4:
+        outcome = "could prevail with strong presentation"
+    else:
+        outcome = "faces significant challenges"
+
+    award_str = f"with an expected recovery of ${int(expected_award)}" if expected_award > 0 else ""
+
+    return f"Claimant is {outcome} {award_str}.".strip()
+
+
+def _generate_advice(signals: LexRatioSignals, win_prob: float, strengths: list[str], weaknesses: list[str]) -> str:
+    """Generate counsel advice."""
+    advice_parts = []
+
+    if win_prob >= 0.65:
+        advice_parts.append("Case presents favorable prospects. Focus on presenting evidence clearly and concisely at hearing.")
+    elif win_prob >= 0.4:
+        advice_parts.append("Case has merit but requires strong presentation. Organize evidence logically and address potential counterarguments.")
+    else:
+        advice_parts.append("Consider settlement discussions given case weaknesses. If proceeding, emphasize strongest points and address gaps in evidence.")
+
+    if not signals.sent_demand_letter:
+        advice_parts.append("Consider whether prior demand letter would have strengthened negotiating position.")
+
+    if not signals.damages_itemized:
+        advice_parts.append("Clearly itemize all damages with supporting receipts and documentation.")
+
+    return " ".join(advice_parts)
+
