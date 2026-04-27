@@ -17,7 +17,7 @@ class MLflowConfig(BaseSettings):
     }
 
     tracking_uri: str = Field(
-        default="http://localhost:5000",
+        default="http://35.208.251.175:5000",
         alias="MLFLOW_TRACKING_URI",
     )
     artifact_root: str = Field(

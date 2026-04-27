@@ -266,18 +266,15 @@ Models are **never committed to git** — they live exclusively in MLflow's arti
 
 ### MLflow
 
-MLflow is the tracking backbone for all experimentation. Start the local server:
+MLflow is the tracking backbone for all experimentation. The team's hosted server runs at `http://35.208.251.175:5000`.
+
+Set the tracking URI before running any training or promotion scripts:
 
 ```bash
-mlflow server \
-  --backend-store-uri sqlite:///mlruns/mlflow.db \
-  --default-artifact-root mlruns/artifacts \
-  --host 0.0.0.0 --port 5000
+export MLFLOW_TRACKING_URI=http://35.208.251.175:5000
 ```
 
-Or use Docker Compose (see below), which starts MLflow automatically.
-
-The MLflow UI at `http://localhost:5000` shows all experiments, metrics, and registered models. Models progress through registry stages: **None → Staging → Production**. The API loads whichever model version is in the Production stage.
+The MLflow UI at `http://35.208.251.175:5000` shows all experiments, metrics, and registered models. Models progress through registry stages: **None → Staging → Production**. The API loads whichever model version is in the Production stage.
 
 ### Similar Case Retrieval
 
@@ -317,19 +314,15 @@ On startup, the API loads **Production**-stage sklearn models from the **MLflow 
 
 Use this flow to satisfy a typical “deploy ML as a web service” assignment: train → register → promote → run API → containerize → push image.
 
-**1. Start MLflow** (registry needs a database-backed server, not a bare `file:` URI):
+**1. Point at the hosted MLflow server:**
 
 ```bash
-mlflow server \
-  --backend-store-uri sqlite:///mlruns/mlflow.db \
-  --default-artifact-root mlruns/artifacts \
-  --host 127.0.0.1 --port 5000
+export MLFLOW_TRACKING_URI=http://35.208.251.175:5000
 ```
 
 **2. Train the binary classifier** (and the monetary regressor used by `/predict`) and register new versions:
 
 ```bash
-export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
 python scripts/train_binary_classifier.py
 ```
 
@@ -342,7 +335,6 @@ python scripts/promote_models_to_production.py
 **4. Run the API locally** (needs `LLM_API_KEY` for feature extraction on `/predict`):
 
 ```bash
-export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
 uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 

@@ -6,12 +6,10 @@ versions to *Production* so the API can load them via the Model Registry:
 
     python scripts/promote_models_to_production.py
 
-Requires MLflow tracking with a database backend (model registry). Example:
+Requires a reachable MLflow tracking server with model registry support.
+Point MLFLOW_TRACKING_URI at the hosted server before running:
 
-    mlflow server \\
-      --backend-store-uri sqlite:///mlruns/mlflow.db \\
-      --default-artifact-root ./mlruns/artifacts \\
-      --host 127.0.0.1 --port 5000
+    export MLFLOW_TRACKING_URI=http://35.208.251.175:5000
 """
 
 from __future__ import annotations

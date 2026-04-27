@@ -1,6 +1,10 @@
 # notebooks/
 
-Colab notebooks for data pipeline stages that require GPU or external API access.
+Two notebooks: one for data extraction (Colab/GPU), one for ML training and analysis (local).
+
+## ernesto_ML.ipynb
+
+Local ML training notebook. Loads `dataset.csv`, trains classifier and regressor using the `v2 feat_*` feature set, and logs runs to the hosted MLflow server (`http://35.208.251.175:5000`). Use this for exploratory model work and validation before running `scripts/train_classifier_real.py` for the production registry run.
 
 ## colab_gpu_extraction.ipynb
 

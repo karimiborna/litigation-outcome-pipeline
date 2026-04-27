@@ -1,15 +1,17 @@
 # Tests Module
 
-110 unit tests covering all pipeline modules. All passing.
+Unit tests covering all pipeline modules.
 
 ## Structure
 
 ```
 tests/
 ├── unit/
+│   ├── test_api_app.py          # FastAPI endpoint behavior and health check
 │   ├── test_api_schemas.py      # Pydantic request/response validation
 │   ├── test_cleaning.py         # Text normalization and OCR artifact removal
 │   ├── test_counterfactual.py   # Feature perturbation logic
+│   ├── test_dataset.py          # models/dataset.py preprocessing logic
 │   ├── test_enumerator.py       # Case number range parsing and probing
 │   ├── test_extractor.py        # PDF text extraction (pymupdf + NVIDIA)
 │   ├── test_feature_schema.py   # LLMFeatures and FeatureVector models
