@@ -56,6 +56,7 @@ select = ["E", "F", "I", "N", "W", "UP"]
 "features/labels.py" = ["E501"]   # LLM prompt strings exceed 100 chars
 "scraper/scrape.py" = ["E402", "E501"]  # sys.path manipulation + argparse help strings
 "notebooks/*" = ["E402"]  # notebooks import conditionally after setup cells
+"api/app.py" = ["E501", "I001"]  # Borna's file — line length and import order deferred
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
