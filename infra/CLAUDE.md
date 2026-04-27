@@ -1,22 +1,17 @@
-# Infra Module
+# Infrastructure Module
 
-Terraform configuration for AWS deployment.
+Cloud deployment configuration for AWS or GCP.
 
-## Structure
+## Responsibilities
 
-```
-infra/
-├── main.tf          # Provider config (AWS)
-├── s3.tf            # S3 buckets — raw data, processed data, MLflow artifacts
-├── ecs.tf           # ECS cluster + task definitions for features + api services
-├── variables.tf     # Input variables
-├── outputs.tf       # Output values (bucket names, service URLs)
-└── envs/
-    ├── dev.tfvars   # Dev environment values
-    └── prod.tfvars  # Prod environment values
-```
+- Define cloud resources for:
+  - **Storage** — S3 bucket or GCS bucket for raw/processed data and MLflow artifacts
+  - **Compute** — ECS task definitions or Cloud Run service configs for API containers
+  - **Networking** — load balancers, security groups, IAM roles as needed
+- Infrastructure-as-code (Terraform, CloudFormation, or deployment scripts)
+- Environment configuration (dev, staging, production)
 
-## Deploy
+## Key Considerations
 
 ```bash
 cd infra/

@@ -1,36 +1,20 @@
-# Counterfactual Module
+# Counterfactual Analysis Module
 
-Shows users which case features most improve their win probability ("what-if" analysis).
+Simulates changes in key features to show how they would affect predicted outcomes.
 
-## File Map
+## Responsibilities
 
-| File | Purpose |
-|---|---|
-| `analyzer.py` | CounterfactualAnalyzer, CounterfactualResult, FEATURE_CONSTRAINTS |
+- Accept a case's feature vector and a set of feature perturbations
+- Run the trained model(s) on the modified feature vectors
+- Compare original vs. counterfactual predictions
+- Present results as "if X were different, the outcome would change by Y"
+- Support both classification (win probability shift) and regression (monetary change) counterfactuals
 
-## How It Works
+## Key Considerations
 
-1. Takes a case's feature vector as baseline
-2. Perturbs one feature at a time using `_auto_perturbations()`:
-   - Booleans → flipped
-   - Integers → +1
-   - Floats → ×1.5
-3. Re-runs classifier + regressor on each perturbed vector
-4. Records delta in win probability and monetary outcome
-5. Returns results sorted by impact (largest delta first)
-
-Feature constraints (`FEATURE_CONSTRAINTS`) enforce valid ranges — no impossible values like evidence_strength=6.
-
-## Usage
-
-```python
-from counterfactual.analyzer import CounterfactualAnalyzer
-
-analyzer = CounterfactualAnalyzer(classifier, regressor)
-results = analyzer.analyze(feature_vector)
-# results[0] is the single feature change with biggest win prob improvement
-```
-
-## Purpose in Pipeline
-
-Exposed via API `/counterfactual` endpoint. Tells self-represented litigants: "If you had a written contract, your win probability goes from 45% to 72%." This is the key differentiator from pure-RAG competitors.
+- Perturbations must respect feature constraints (e.g., claim amount can't be negative)
+- Only perturb features that are meaningful and actionable. v2 perturbable set is defined in `FEATURE_CONSTRAINTS` in `analyzer.py` and focuses on evidence-existence booleans (`has_*`), argument-content booleans (`argument_*`), procedural booleans (`sent_*` / `attempted_*` / `gave_*`), representation booleans (`user_has_attorney`, `opposing_party_has_attorney`), and the two numerics (`monetary_amount_claimed`, `witness_count`). Fields that aren't meaningfully changeable by the user (contract detail — only meaningful if a contract exists; damages breakdown — describes the claim; jurisdictional; counts; `user_is_plaintiff`) are intentionally excluded.
+- Depends on trained models from `models/` — loads from MLflow registry
+- Output should be human-readable and useful for non-technical users
+- Feature interaction effects may be important — changing one feature may affect interpretation of others
+- Bool perturbations flip 0↔1; numeric perturbations step by 1 (int) or ×1.5 (float) within the declared min/max

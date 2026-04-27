@@ -14,7 +14,9 @@ counterfactual/ (feature perturbation analysis)
 
 ## Key Design Decisions
 
-- **LLM for feature extraction only** — not for prediction. The LLM converts raw case text into structured signals (evidence strength, contract presence, argument clarity). Prediction is handled by traditional ML models (classification + regression).
+- **LLM for feature extraction only** — not for prediction. The LLM converts raw case text into ~40 **existence-based booleans** (is X stated/attached/named in the text?) plus a few numerics. Subjective 1–5 ratings were retired in the v2 schema in favor of observable facts. Prediction is handled by traditional ML models (classification + regression).
+- **Unilateral feature perspective**: features are written as `user_*` / `opposing_party_*`. `user_side` is auto-detected per case from whether a `DEFENDANT_S_CLAIM` document exists; derived `user_is_plaintiff` flag lets one model serve both sides.
+- **Leakage firewall**: outcome documents (judgments, orders, dismissals, stipulations) are excluded from feature-extraction text. The exclusion list lives in `features/labels.LABEL_DOC_KEYWORDS` — `FeatureExtractor` input and `LabelExtractor` input must remain disjoint by doc type.
 - **MLflow** manages all experiment tracking, metric logging, and model versioning.
 - **Retrieval** uses embeddings to find similar historical cases and ground explanations in real examples.
 - **Counterfactual analysis** simulates feature changes to show predicted outcome shifts.

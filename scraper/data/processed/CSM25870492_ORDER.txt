@@ -1,0 +1,24 @@
+**Document Text Extraction**
+
+The document is a San Francisco small claims court form titled "Order on Request to Postpone Trial" (SC-152). The extracted text includes:
+
+* **Case Information:**
+	+ Case Number: CSM-25-870492
+	+ Case Name: Machowsky v Strimbu
+* **Party Names:**
+	+ Christopher Strimbu (plaintiff)
+	+ Machowsky (defendant)
+* **Dates:**
+	+ Filing Date: November 6, 2025
+	+ Hearing Date: November 7, 2025
+* **Claim Amount:**
+	+ Not specified
+* **Rulings:**
+	+ The request to postpone the trial is approved.
+	+ The court orders the trial to be postponed as indicated in section 3.
+* **Other Information:**
+	+ The clerk will mail a copy of this order to the parties.
+	+ The person who asked for the postponement is Christopher Strimbu.
+	+ All plaintiffs and defendants at the addresses listed in the court's records will receive a copy of the order.
+
+Note that some information, such as the claim amount, is not specified on this page.

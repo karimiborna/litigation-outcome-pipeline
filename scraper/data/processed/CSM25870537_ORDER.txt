@@ -1,0 +1,25 @@
+**Document Text Extraction**
+
+The document is a "Request to Postpone Trial" form from the San Francisco small claims court. The extracted text includes:
+
+* **Case Information:**
+	+ Case Number: CSM-25-870537
+	+ Case Name: Han v. Baldini
+* **Party Names:**
+	+ Angela Han (Plaintiff)
+	+ Han V. Baldini (Defendant)
+* **Dates:**
+	+ Request Date: November 4, 2025
+	+ Hearing Date: February 4, 2026
+	+ Filing Date: November 7, 2025
+* **Claim Amount:**
+	+ Not specified
+* **Rulings:**
+	+ The request to postpone the trial is approved.
+	+ The court orders the trial to be postponed as indicated in section 3.
+* **Other Information:**
+	+ The clerk will mail a copy of this order to all plaintiffs and defendants at the addresses listed in the court's records.
+	+ The person who asked for the postponement is Angela Han.
+	+ All plaintiffs and defendants are listed in the court's records.
+
+Note that some information, such as the claim amount, is not specified on this page.

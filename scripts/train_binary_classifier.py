@@ -37,81 +37,95 @@ RANDOM_STATE = 42
 N_SAMPLES = 400
 
 
+_BOOL_COLUMNS = [
+    "user_is_plaintiff",
+    "user_has_attorney",
+    "opposing_party_has_attorney",
+    "opposing_party_filed_response_documents",
+    "counterclaim_present",
+    "contract_present",
+    "has_photos_or_physical_evidence",
+    "has_receipts_or_financial_records",
+    "has_written_communications",
+    "has_witness_statements",
+    "has_signed_contract_attached",
+    "has_repair_or_replacement_estimate",
+    "has_police_report",
+    "has_medical_records",
+    "has_expert_assessment",
+    "has_invoices_or_billing_records",
+    "argument_cites_specific_dates",
+    "argument_cites_specific_dollar_amounts",
+    "argument_cites_contract_or_document",
+    "argument_has_chronological_timeline",
+    "argument_names_specific_witnesses",
+    "argument_quantifies_each_damage_component",
+    "argument_cites_statute_or_legal_basis",
+    "argument_identifies_specific_location",
+    "sent_written_demand_letter",
+    "sent_certified_mail",
+    "gave_opportunity_to_cure",
+    "attempted_mediation",
+    "contract_is_written",
+    "contract_is_signed_by_both_parties",
+    "contract_specifies_deadline_or_term",
+    "contract_specifies_payment_amount",
+    "damages_include_out_of_pocket_costs",
+    "damages_include_lost_wages",
+    "damages_include_property_value_loss",
+    "damages_are_ongoing",
+    "damages_have_third_party_valuation",
+    "claim_amount_stated_in_dollars",
+    "claim_amount_is_within_small_claims_limit",
+    "user_seeks_interest",
+    "user_seeks_court_costs",
+]
+
+
 def _feature_columns() -> list[str]:
-    return list(
-        FeatureVector(
-            case_number="TEMPLATE",
-            evidence_strength=3,
-            contract_present=True,
-            argument_clarity_plaintiff=3,
-            argument_clarity_defendant=3,
-            monetary_amount_claimed=1000.0,
-            prior_attempts_to_resolve=True,
-            witness_count=0,
-            documentary_evidence=True,
-            timeline_clarity=3,
-            legal_representation_plaintiff=False,
-            legal_representation_defendant=False,
-            counterclaim_present=False,
-            default_judgment_likely=False,
-            plaintiff_count=1,
-            defendant_count=1,
-            has_attorney_plaintiff=False,
-            has_attorney_defendant=False,
-            text_length=500,
-            document_count=3,
-        ).to_model_input().keys()
-    )
+    return list(FeatureVector(case_number="TEMPLATE").to_model_input().keys())
 
 
 def build_synthetic_dataset(
     n_samples: int = N_SAMPLES,
     random_state: int = RANDOM_STATE,
 ) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
-    """Return (X, y_class, y_reg) with realistic column names for the pipeline."""
+    """Return (X, y_class, y_reg) with v2 feature column names for the pipeline."""
     rng = np.random.default_rng(random_state)
     cols = _feature_columns()
     x = pd.DataFrame(
         {c: rng.normal(0, 1, n_samples) for c in cols},
     )
-    # Override a few columns to mimic real ranges
-    x["evidence_strength"] = rng.integers(1, 6, n_samples)
-    x["argument_clarity_plaintiff"] = rng.integers(1, 6, n_samples)
-    x["argument_clarity_defendant"] = rng.integers(1, 6, n_samples)
-    x["timeline_clarity"] = rng.integers(1, 6, n_samples)
-    x["witness_count"] = rng.integers(0, 5, n_samples)
-    x["monetary_amount_claimed"] = rng.uniform(100, 15000, n_samples)
-    x["text_length"] = rng.uniform(200, 8000, n_samples)
-    x["document_count"] = rng.integers(1, 12, n_samples)
-    for b in (
-        "contract_present",
-        "prior_attempts_to_resolve",
-        "documentary_evidence",
-        "legal_representation_plaintiff",
-        "legal_representation_defendant",
-        "counterclaim_present",
-        "default_judgment_likely",
-        "has_attorney_plaintiff",
-        "has_attorney_defendant",
-    ):
-        x[b] = rng.integers(0, 2, n_samples).astype(float)
 
+    # Numeric ranges
+    x["monetary_amount_claimed"] = rng.uniform(100, 15000, n_samples)
+    x["witness_count"] = rng.integers(0, 5, n_samples).astype(float)
     x["plaintiff_count"] = rng.integers(1, 3, n_samples).astype(float)
     x["defendant_count"] = rng.integers(1, 4, n_samples).astype(float)
+    x["text_length"] = rng.uniform(200, 8000, n_samples)
+    x["document_count"] = rng.integers(1, 12, n_samples).astype(float)
 
+    # Booleans (0/1)
+    for b in _BOOL_COLUMNS:
+        x[b] = rng.integers(0, 2, n_samples).astype(float)
+
+    # Synthetic win signal: a few evidence/procedural booleans push win probability.
     logit = (
-        0.15 * x["evidence_strength"]
-        + 0.12 * x["argument_clarity_plaintiff"]
-        - 0.1 * x["argument_clarity_defendant"]
-        + 0.08 * x["documentary_evidence"]
-        - 0.05 * x["legal_representation_defendant"]
-        + 0.2 * x["default_judgment_likely"]
+        0.25 * x["has_signed_contract_attached"]
+        + 0.20 * x["has_receipts_or_financial_records"]
+        + 0.15 * x["has_written_communications"]
+        + 0.15 * x["sent_written_demand_letter"]
+        + 0.10 * x["argument_cites_specific_dates"]
+        + 0.10 * x["argument_quantifies_each_damage_component"]
+        - 0.10 * x["opposing_party_has_attorney"]
+        + 0.25 * (1.0 - x["opposing_party_filed_response_documents"])  # default risk
         + rng.normal(0, 0.5, n_samples)
     )
     y_class = (logit > 0).astype(int)
     y_reg = (
         0.3 * x["monetary_amount_claimed"]
-        + 50.0 * x["evidence_strength"]
+        + 200.0 * x["has_signed_contract_attached"]
+        + 150.0 * x["has_receipts_or_financial_records"]
         + rng.normal(0, 200, n_samples)
     ).clip(0, 25000)
 

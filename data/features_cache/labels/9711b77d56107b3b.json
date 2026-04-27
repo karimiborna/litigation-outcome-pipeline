@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870268",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 2112.5,
+  "amount_awarded_costs": 90.0,
+  "amount_awarded_interest": 90.0,
+  "defendant_appeared": null,
+  "has_attorney_plaintiff": null,
+  "has_attorney_defendant": null,
+  "judgment_date": "2025-09-15",
+  "outcome_summary": "The plaintiff was awarded $2112.50 in principal, $90.00 in costs, and $90.00 in interest for breach of warranty of habitability."
+}

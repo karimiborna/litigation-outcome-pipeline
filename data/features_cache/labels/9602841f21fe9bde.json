@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870280",
+  "outcome": "defendant_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 1152.0,
+  "amount_awarded_costs": 0.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": true,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": false,
+  "judgment_date": "2025-09-24",
+  "outcome_summary": "The court ruled in favor of the defendant, with the plaintiff not meeting the burden of proof for damages claimed."
+}

@@ -1,8 +1,8 @@
 # Models Module
 
-Trains and serves two scikit-learn models with MLflow tracking.
+Classification and regression model training for predicting case outcomes.
 
-## File Map
+## Responsibilities
 
 | File | Purpose |
 |---|---|
@@ -11,7 +11,7 @@ Trains and serves two scikit-learn models with MLflow tracking.
 | `config.py` | MLflowConfig — tracking_uri, artifact_root, experiment/model names |
 | `dataset.py` | Shared preprocessing — `preprocess_feature_frame()`, `feature_vector_to_model_frame()`, `MODEL_FEATURE_COLUMNS` |
 
-## Two Models
+## Key Considerations
 
 - Two distinct prediction targets: binary outcome (win/lose) and continuous outcome (monetary amount)
 - Models should be compared across experiments using MLflow tracking

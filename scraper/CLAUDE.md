@@ -1,50 +1,29 @@
 # Scraper Module
 
-Harvests SF Superior Court small claims case data via reverse-engineered DataSnap REST API.
+Scrapes SF Superior Court small claims case data via reverse-engineered DataSnap REST API, downloads case PDFs, and extracts text using PyMuPDF with NVIDIA vision API fallback.
 
-## Entry Points
+## Data Source
 
-```bash
-# CLI (preferred)
-python -m scraper.cli scrape --start 2025-12-01 --end 2026-04-01
-python -m scraper.cli status
-python -m scraper.cli enumerate --range CSM25870000-CSM25879999
-python -m scraper.cli download-cases
+The SF Superior Court runs a legacy Delphi DataSnap REST backend behind Cloudflare. Two `.dll` endpoints:
 
-# Legacy standalone script
-python scraper/scrape.py --date 2026-04-01
-python scraper/scrape.py --backfill   # last 120 days
-```
-
-## File Map
-
-| File | Purpose |
+| Endpoint | Purpose |
 |---|---|
-| `cli.py` | Click CLI — commands: scrape, status, extract, enumerate, download-cases |
-| `court_api.py` | DataSnap REST client — get_cases, get_documents, get_roa, probe_case_exists |
-| `court_scraper.py` | Orchestrator — CourtScraper class, scrape_date_range, build_date_range |
-| `enumerator.py` | Brute-force case discovery — CaseEnumerator, ValidCasesStore |
-| `manifest.py` | Resume support — ScrapeManifest, CaseRecord, DateRecord (JSON-backed) |
-| `rate_limiter.py` | Token bucket — 2.5s min delay, 200 req/day cap |
-| `session.py` | Session ID — read from env or prompt user interactively |
-| `extractor.py` | PDF text extraction — pymupdf first, NVIDIA vision API fallback |
-| `scrape.py` | Legacy standalone scraper with --backfill support |
-| `config.py` | Constants + ScraperConfig (pydantic-settings) |
-| `state/valid_cases.json` | Persisted valid case numbers from enumeration runs |
+| `/cc/CaseCalendar.dll` | Search cases by date, name, or case number |
+| `/ci/CaseInfo.dll` | Fetch documents, parties, and ROA for a specific case |
 
-## Court Site Architecture
+### Reverse-Engineered API Endpoints
 
-**Base endpoint:** `https://webapps.sftc.org`
-
-Two DLL services expose DataSnap REST APIs:
-- `/cc/CaseCalendar.dll` — search cases by hearing date
-- `/ci/CaseInfo.dll` — case detail, documents, parties, ROA
-
-**Session IDs** are Cloudflare-gated (CAPTCHA) — must be obtained from a real browser. Sessions expire from inactivity. The keepalive thread in session_manager.py pings every 2 minutes to prevent expiry.
-
-**API endpoints (reverse-engineered from lookup.js / cslookup.js):**
+**Get cases by date:**
 ```
-GET /cc/CaseCalendar.dll/datasnap/rest/TServerMethods1/GetCases2/{date}/M//CSM/{session_id}
+GET /cc/CaseCalendar.dll/datasnap/rest/TServerMethods1/GetCases2/{date}/{case_type}/{session_id}
+```
+- `date` — `YYYY-MM-DD` format
+- `case_type` — `M//CSM` for Small Claims
+- Returns JSON: `{"result": [count, "[{...case objects...}]"]}`
+- `result[0] == -1` → session expired; `== 0` → no cases found
+
+**Get documents for a case:**
+```
 GET /ci/CaseInfo.dll/datasnap/rest/TServerMethods1/GetDocuments/{case_num}/{session_id}/
 ```
 - Document URLs are **time-limited signed links** (~10 min expiry)
@@ -78,53 +57,33 @@ scraper/
 
 ## PDF Text Extraction
 
-**Document URLs are time-limited (~10 min signed URLs)** — download PDFs immediately after fetching the document list, never queue for later.
+Two-tier strategy:
+1. **PyMuPDF** (free, instant) — extracts selectable text. If >100 chars found, done.
+2. **NVIDIA Vision API** (fallback) — renders pages to JPEG at 150 DPI, sends to `meta/llama-3.2-90b-vision-instruct` for OCR. Uses OpenAI-compatible client.
 
-**DATA EXPIRES AFTER 120 DAYS** — the court site only serves filings from the last 120 days. Run `--backfill` ASAP to capture historical data before it disappears.
+NVIDIA free tier: ~500 requests/day per key. Most court PDFs have selectable text so quota is preserved.
 
-## PDF Extraction Strategy
+## Key Dependencies
 
-All court PDFs are scanned image PDFs (Fujitsu PaperStream scanner, no embedded text):
-1. **pymupdf** — try selectable text extraction first (free, instant, no quota)
-2. **NVIDIA vision API** — fallback when <100 chars found (for scanned/image PDFs)
+- `requests` — HTTP client (synchronous, rate-limited to 2.5s between calls)
+- `pymupdf` (fitz) — PDF text extraction and page rendering
+- `openai` — NVIDIA vision API client (OpenAI-compatible endpoint)
 
-NVIDIA model: `meta/llama-3.2-90b-vision-instruct` via `integrate.api.nvidia.com/v1`
-Free tier: ~500 extractions/day per key. Each team member uses their own key (~1,500/day total).
-
-## Output Structure
-
-```
-data/raw/<case_number>/
-    metadata.json              # case number, title, hearing date, parties
-    CLAIM_OF_PLAINTIFF.pdf
-    PROOF_OF_SERVICE.pdf
-    ...
-
-data/processed/<case_number>/
-    CLAIM_OF_PLAINTIFF.txt     # extracted text (pymupdf or NVIDIA)
-    PROOF_OF_SERVICE.txt
-    ...
-
-data/scraped_dates.txt         # resume log — one date per line
-data/manifest.json             # full scrape manifest (ScrapeManifest)
-scraper/state/valid_cases.json # case numbers found via enumeration
-```
-
-## Respectful Scraping Rules
-
-- 2.5s minimum delay between all court site requests
-- Exponential backoff on 429/5xx (base 2, max 4 retries)
-- 200 requests/day cap to court site
-- Academic User-Agent header
-- Never re-scrape — manifest and scraped_dates.txt track completed dates
-- NVIDIA daily cap: 490/day per key (10-request buffer)
-
-## Getting a Session ID
+## Output
 
 ```
-1. Visit https://webapps.sftc.org/cc/CaseCalendar.dll in your browser
-2. Copy SessionID=... from the redirected URL
-3. Paste into .env:
-   SFTC_SESSION_ID=<value>
-   NVIDIA_API_KEY=<value>
+data/raw/pdfs/            # Downloaded PDFs (immutable)
+data/processed/extracted/ # Extracted .txt files (one per PDF)
+scraper/state/            # Manifest JSON for resume support
 ```
+
+Filename convention: `{case_num}_{sanitized_description}.pdf`
+
+## Respectful Scraping
+
+- 2.5-second minimum delay between requests
+- 200 requests/day cap (configurable)
+- Academic research User-Agent header
+- Skip weekends (no court dates)
+- Resume support via manifest — never re-scrapes or re-downloads
+- Graceful handling of session expiry

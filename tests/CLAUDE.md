@@ -1,4 +1,4 @@
-# Tests Module
+# Tests
 
 Unit tests covering all pipeline modules.
 
@@ -26,22 +26,19 @@ tests/
 └── integration/                 # Integration tests (run on merge to main)
 ```
 
-## Running Tests
+## Responsibilities
 
-```bash
-# All unit tests
-pytest tests/unit/
+- Validate data ingestion and schema enforcement (`data/`)
+- Test LLM prompt parsing and feature extraction output structure (`features/`)
+- Test model training, loading, and prediction interfaces (`models/`)
+- Test retrieval index building and query results (`retrieval/`)
+- Test counterfactual perturbation logic and output format (`counterfactual/`)
+- Test API endpoints, request validation, and error handling (`api/`)
 
-# Single file
-pytest tests/unit/test_cleaning.py -v
+## Key Considerations
 
-# With coverage
-pytest tests/unit/ --cov=. --cov-report=html
-```
-
-## Key Conventions
-
-- LLM calls are mocked in all unit tests (no real API calls)
-- Integration tests hit real services and run only on merge to main (GitHub Actions)
-- Fixtures for sample case data live in `tests/unit/conftest.py`
-- Tests mirror source structure: `scraper/court_api.py` → `tests/unit/test_parser.py`
+- Unit tests should not require LLM API calls — mock the LLM responses
+- Integration tests may hit real services — keep them in a separate directory
+- Use fixtures for sample case data and expected feature outputs
+- CI runs all unit tests on every push; integration tests run on merge to main
+- Test data should be small, representative, and committed to the repo

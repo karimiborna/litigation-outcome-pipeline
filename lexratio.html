@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LexRatio — Small Claims Court Advisor</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --color-text-primary: #1a1a18;
+  --color-text-secondary: #3d3d3a;
+  --color-text-tertiary: #73726c;
+  --color-text-success: #166534;
+  --color-text-warning: #92400e;
+  --color-text-danger: #991b1b;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f5f4f0;
+  --color-border-primary: rgba(0,0,0,0.4);
+  --color-border-secondary: rgba(0,0,0,0.2);
+  --color-border-tertiary: rgba(0,0,0,0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text-primary: #e8e5da;
+    --color-text-secondary: #c2bfb2;
+    --color-text-tertiary: #888780;
+    --color-text-success: #4ade80;
+    --color-text-warning: #fcd34d;
+    --color-text-danger: #f87171;
+    --color-background-primary: #1c1b18;
+    --color-background-secondary: #252420;
+    --color-border-primary: rgba(255,255,255,0.4);
+    --color-border-secondary: rgba(255,255,255,0.2);
+    --color-border-tertiary: rgba(255,255,255,0.08);
+  }
+}
+
+body {
+  font-family: 'DM Mono', monospace;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--color-background-primary);
+  min-height: 100vh;
+  padding: 2rem 1rem;
+}
+
+.ledger {
+  max-width: 680px;
+  margin: 0 auto;
+  padding-bottom: 4rem;
+}
+
+.logo-bar { display: flex; align-items: center; gap: 14px; margin-bottom: 0.25rem; }
+.logo-seal { width: 48px; height: 48px; flex-shrink: 0; }
+.logo-name { font-family: 'DM Serif Display', Georgia, serif; font-size: 22px; line-height: 1; letter-spacing: -0.3px; color: var(--color-text-primary); }
+.logo-tagline { font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--color-text-tertiary); margin-top: 3px; }
+
+.rule-double { height: 5px; border-top: 2px solid var(--color-border-primary); border-bottom: 0.5px solid var(--color-border-secondary); margin: 1rem 0 1.5rem; }
+.rule-single { height: 1px; background: var(--color-border-tertiary); margin: 1.25rem 0; }
+
+.section-cap { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 10px; font-weight: 500; }
+
+.field + .field { margin-top: 1rem; }
+.field-label { display: block; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 5px; font-weight: 500; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+textarea, input[type=text], input[type=number], select {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-secondary);
+  border-radius: 0;
+  color: var(--color-text-primary);
+}
+textarea { width: 100%; min-height: 100px; resize: vertical; padding: 8px 10px; line-height: 1.6; }
+input[type=text], input[type=number] { width: 100%; height: 34px; padding: 0 10px; }
+select { width: 100%; height: 34px; padding: 0 10px; }
+textarea:focus, input:focus, select:focus { outline: none; border-color: var(--color-border-primary); }
+
+.submit-row { display: flex; align-items: center; gap: 16px; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 0.5px solid var(--color-border-tertiary); }
+.submit-btn { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; font-weight: 500; padding: 10px 24px; background: var(--color-text-primary); color: var(--color-background-primary); border: none; cursor: pointer; transition: opacity 0.15s; display: flex; align-items: center; gap: 8px; }
+.submit-btn:hover { opacity: 0.82; }
+.submit-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.submit-note { font-size: 10px; color: var(--color-text-tertiary); letter-spacing: 0.5px; }
+
+.spinner { display: inline-block; width: 12px; height: 12px; border: 1.5px solid rgba(255,255,255,0.3); border-top-color: currentColor; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.docket-head { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.docket-summary { font-family: 'DM Serif Display', serif; font-size: 17px; line-height: 1.35; color: var(--color-text-primary); }
+.conf-stamp { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 4px 10px; border: 1px solid; font-weight: 500; white-space: nowrap; }
+.stamp-high { border-color: var(--color-text-success); color: var(--color-text-success); }
+.stamp-med  { border-color: var(--color-text-warning); color: var(--color-text-warning); }
+.stamp-low  { border-color: var(--color-text-danger);  color: var(--color-text-danger);  }
+
+.ledger-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 0.5px solid var(--color-border-secondary); margin-bottom: 1.25rem; }
+.ledger-cell { padding: 12px 14px; border-right: 0.5px solid var(--color-border-secondary); }
+.ledger-cell:last-child { border-right: none; }
+.lc-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 6px; }
+.lc-val { font-family: 'DM Serif Display', serif; font-size: 26px; line-height: 1; color: var(--color-text-primary); }
+
+.meter-wrap { margin-bottom: 1.25rem; }
+.meter-labels { display: flex; justify-content: space-between; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 6px; }
+.meter-track { height: 4px; background: var(--color-border-tertiary); }
+.meter-fill { height: 100%; transition: width 1s cubic-bezier(0.34, 1.2, 0.64, 1); }
+
+.factors-table { width: 100%; border-collapse: collapse; margin-bottom: 1.25rem; }
+.factors-table td { padding: 8px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 12px; vertical-align: top; }
+.factors-table tr:last-child td { border-bottom: none; }
+.factor-mark { width: 28px; font-size: 11px; font-weight: 500; padding-right: 8px; }
+.mark-pos { color: var(--color-text-success); }
+.mark-neg { color: var(--color-text-danger); }
+
+.advice-entry { padding: 1rem 0 1rem 1rem; border-left: 2px solid var(--color-border-secondary); font-size: 12px; line-height: 1.75; color: var(--color-text-secondary); margin-bottom: 1.25rem; font-style: italic; }
+
+.signals-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1.25rem; }
+.sig-item { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--color-text-secondary); }
+.sig-mark { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.sig-yes  { background: var(--color-text-success); }
+.sig-no   { background: var(--color-text-danger); }
+.sig-null { background: var(--color-border-secondary); }
+
+.action-row { display: flex; flex-wrap: wrap; padding-top: 1rem; border-top: 0.5px solid var(--color-border-tertiary); gap: 6px; }
+.act-btn { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 12px; border: 0.5px solid var(--color-border-secondary); color: var(--color-text-secondary); background: transparent; cursor: pointer; transition: all 0.15s; }
+.act-btn:hover { border-color: var(--color-border-primary); color: var(--color-text-primary); }
+
+.disclaimer { font-size: 10px; color: var(--color-text-tertiary); line-height: 1.6; margin-top: 1.25rem; padding-top: 1rem; border-top: 0.5px solid var(--color-border-tertiary); }
+
+.empty-docket { text-align: center; padding: 2.5rem 1rem; color: var(--color-text-tertiary); font-size: 11px; letter-spacing: 1px; border: 0.5px dashed var(--color-border-tertiary); margin-top: 1.5rem; }
+.error-entry { padding: 10px 14px; border-left: 2px solid var(--color-text-danger); font-size: 12px; color: var(--color-text-danger); margin-top: 1rem; }
+</style>
+</head>
+<body>
+<div class="ledger">
+
+  <div class="logo-bar">
+    <svg class="logo-seal" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="24" cy="24" r="22.5" stroke="var(--color-border-primary)" stroke-width="1"/>
+      <circle cx="24" cy="24" r="19" stroke="var(--color-border-secondary)" stroke-width="0.5"/>
+      <path d="M24 10 L26.2 17.6 L34.2 17.6 L27.8 22.4 L30 30 L24 25.2 L18 30 L20.2 22.4 L13.8 17.6 L21.8 17.6 Z" fill="var(--color-text-primary)" opacity="0.12"/>
+      <line x1="16" y1="21" x2="32" y2="21" stroke="var(--color-text-primary)" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M19 21 L19 32 M29 21 L29 32" stroke="var(--color-text-primary)" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="M16.5 32 L31.5 32" stroke="var(--color-text-primary)" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M13 15.5 L35 15.5" stroke="var(--color-text-primary)" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
+      <circle cx="24" cy="10.5" r="1.5" fill="var(--color-text-primary)" opacity="0.6"/>
+      <text x="24" y="40" text-anchor="middle" font-family="'DM Mono',monospace" font-size="4" letter-spacing="1.5" fill="var(--color-text-tertiary)">FIAT IVSTITIA</text>
+    </svg>
+    <div>
+      <div class="logo-name">Lex<span style="opacity:0.35">·</span>Ratio</div>
+      <div class="logo-tagline">Small Claims Court Advisor</div>
+    </div>
+  </div>
+
+  <div class="rule-double"></div>
+
+  <div class="section-cap">I. Case particulars</div>
+
+  <div class="field">
+    <div class="field-row">
+      <div>
+        <label class="field-label">Nature of dispute</label>
+        <select id="in-cat">
+          <option value="">— select —</option>
+          <option value="unpaid_debt">Unpaid debt / money owed</option>
+          <option value="security_deposit">Security deposit</option>
+          <option value="property_damage">Property damage</option>
+          <option value="service_dispute">Service not delivered</option>
+          <option value="breach_of_contract">Breach of contract</option>
+          <option value="personal_injury">Personal injury</option>
+          <option value="fraud">Fraud / misrepresentation</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Amount in dispute ($)</label>
+        <input type="number" id="in-amount" placeholder="0.00" min="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="rule-single"></div>
+  <div class="section-cap">II. Statement of facts</div>
+
+  <div class="field">
+    <label class="field-label">What happened — describe in full</label>
+    <textarea id="in-narrative" placeholder="Describe the dispute from the beginning. Include dates, what was agreed, what went wrong, and who was involved. The more detail you provide, the more accurate the analysis."></textarea>
+  </div>
+
+  <div class="rule-single"></div>
+  <div class="section-cap">III. Evidence &amp; prior conduct</div>
+
+  <div class="field">
+    <div class="field-row">
+      <div>
+        <label class="field-label">Evidence in your possession</label>
+        <textarea id="in-evidence" style="min-height:72px" placeholder="e.g. Signed contract, receipts, text messages, photos, invoices, police report…"></textarea>
+      </div>
+      <div>
+        <label class="field-label">Steps already taken</label>
+        <textarea id="in-steps" style="min-height:72px" placeholder="e.g. Sent demand letter via certified mail, attempted mediation…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="submit-row">
+    <button class="submit-btn" id="submit-btn" onclick="analyze()">
+      <span id="btn-txt">Submit for analysis</span>
+      <span id="btn-spin" style="display:none" class="spinner"></span>
+    </button>
+    <span class="submit-note">~15 seconds · powered by AI</span>
+  </div>
+
+  <div id="result-area">
+    <div class="empty-docket">— docket pending submission —</div>
+  </div>
+
+</div>
+
+<script>
+async function analyze() {
+  var narrative = document.getElementById('in-narrative').value.trim();
+  if (!narrative) { document.getElementById('in-narrative').focus(); return; }
+
+  var amount   = document.getElementById('in-amount').value;
+  var cat      = document.getElementById('in-cat').value;
+  var evidence = document.getElementById('in-evidence').value.trim();
+  var steps    = document.getElementById('in-steps').value.trim();
+
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  document.getElementById('btn-txt').textContent = 'Analysing…';
+  document.getElementById('btn-spin').style.display = 'inline-block';
+  document.getElementById('result-area').innerHTML = '';
+
+  var sys = `You are an expert small claims court advisor. Analyse the case and return ONLY valid JSON, no markdown, no prose.
+
+Return exactly:
+{
+  "win_probability": <integer 0-100, likelihood the claimant prevails>,
+  "expected_award": <number, expected monetary award>,
+  "confidence": <"high"|"medium"|"low">,
+  "verdict_summary": <one plain-English sentence predicting the likely outcome>,
+  "strengths": [<2-4 specific positive factors supporting the claim>],
+  "weaknesses": [<2-4 specific risks or gaps in the case>],
+  "advice": <2-3 sentences of concrete hearing advice>,
+  "signals": {
+    "has_written_evidence": <true|false|null>,
+    "sent_demand_letter": <true|false|null>,
+    "has_contract": <true|false|null>,
+    "defendant_responded": <true|false|null>,
+    "has_witnesses": <true|false|null>,
+    "damages_itemized": <true|false|null>
+  }
+}`;
+
+  var msg = [
+    cat ? 'Case type: ' + cat : '',
+    amount ? 'Amount in dispute: $' + amount : '',
+    'Facts: ' + narrative,
+    evidence ? 'Evidence: ' + evidence : '',
+    steps ? 'Prior steps: ' + steps : ''
+  ].filter(Boolean).join('\n');
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Add your Anthropic API key here:
+        // 'x-api-key': 'YOUR_API_KEY_HERE',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: sys,
+        messages: [{ role: 'user', content: msg }]
+      })
+    });
+    var data = await resp.json();
+    var raw = data.content.map(function(c){ return c.text || ''; }).join('');
+    var r = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    renderResult(r, amount);
+  } catch(e) {
+    document.getElementById('result-area').innerHTML =
+      '<div class="error-entry">Analysis failed — ' + e.message + '. Please try again.</div>';
+  } finally {
+    btn.disabled = false;
+    document.getElementById('btn-txt').textContent = 'Submit for analysis';
+    document.getElementById('btn-spin').style.display = 'none';
+  }
+}
+
+function renderResult(r, amount) {
+  var wp     = Math.round(r.win_probability || 0);
+  var award  = r.expected_award || 0;
+  var conf   = r.confidence || 'medium';
+  var amtNum = parseFloat(amount) || 0;
+  var recovery = (amtNum > 0 && award > 0) ? Math.round((award / amtNum) * 100) + '%' : '—';
+  var awardStr = award > 0 ? '$' + Math.round(award).toLocaleString() : '—';
+  var barColor = wp >= 65 ? 'var(--color-text-success)' : wp >= 40 ? 'var(--color-text-warning)' : 'var(--color-text-danger)';
+  var stampClass = conf === 'high' ? 'stamp-high' : conf === 'low' ? 'stamp-low' : 'stamp-med';
+  var confLabel  = conf === 'high' ? 'High confidence' : conf === 'medium' ? 'Medium confidence' : 'Low confidence';
+
+  var strHtml = (r.strengths || []).map(function(s) {
+    return '<tr><td class="factor-mark mark-pos">+</td><td>' + s + '</td></tr>';
+  }).join('');
+  var wkHtml = (r.weaknesses || []).map(function(w) {
+    return '<tr><td class="factor-mark mark-neg">−</td><td>' + w + '</td></tr>';
+  }).join('');
+
+  var sigDefs = [
+    ['has_written_evidence',   'Written evidence'],
+    ['sent_demand_letter',     'Demand letter'],
+    ['has_contract',           'Contract exists'],
+    ['defendant_responded',    'Defendant responded'],
+    ['has_witnesses',          'Witnesses'],
+    ['damages_itemized',       'Damages itemised']
+  ];
+  var sigs = r.signals || {};
+  var sigsHtml = sigDefs.map(function(d) {
+    var v = sigs[d[0]];
+    var cls = v === true ? 'sig-yes' : v === false ? 'sig-no' : 'sig-null';
+    return '<div class="sig-item"><span class="sig-mark ' + cls + '"></span>' + d[1] + '</div>';
+  }).join('');
+
+  document.getElementById('result-area').innerHTML =
+    '<div class="rule-double"></div>' +
+    '<div class="section-cap">IV. Docket — analysis</div>' +
+
+    '<div class="docket-head">' +
+      '<div class="docket-summary">"' + r.verdict_summary + '"</div>' +
+      '<div class="conf-stamp ' + stampClass + '">' + confLabel + '</div>' +
+    '</div>' +
+
+    '<div class="ledger-grid">' +
+      '<div class="ledger-cell"><div class="lc-label">Win probability</div>' +
+        '<div class="lc-val" style="color:' + barColor + '">' + wp + '<span style="font-size:16px;opacity:0.5">%</span></div></div>' +
+      '<div class="ledger-cell"><div class="lc-label">Expected award</div>' +
+        '<div class="lc-val">' + awardStr + '</div></div>' +
+      '<div class="ledger-cell"><div class="lc-label">Claim recovery</div>' +
+        '<div class="lc-val">' + recovery + '</div></div>' +
+    '</div>' +
+
+    '<div class="meter-wrap">' +
+      '<div class="meter-labels"><span>Less likely to prevail</span><span>More likely to prevail</span></div>' +
+      '<div class="meter-track"><div class="meter-fill" id="mfill" style="width:0%;background:' + barColor + '"></div></div>' +
+    '</div>' +
+
+    '<div class="rule-single"></div>' +
+    '<div class="section-cap">V. Merits</div>' +
+    '<table class="factors-table"><tbody>' + strHtml + wkHtml + '</tbody></table>' +
+
+    '<div class="section-cap">VI. Signals detected</div>' +
+    '<div class="signals-row">' + sigsHtml + '</div>' +
+
+    (r.advice ?
+      '<div class="rule-single"></div>' +
+      '<div class="section-cap">VII. Counsel\'s note</div>' +
+      '<div class="advice-entry">' + r.advice + '</div>'
+    : '') +
+
+    '<div class="disclaimer">This analysis is AI-generated for informational purposes only and does not constitute legal advice. Actual outcomes depend on the specific facts presented, available evidence, and judicial discretion. Consult a licensed attorney before making legal decisions.</div>';
+
+  setTimeout(function() {
+    var f = document.getElementById('mfill');
+    if (f) f.style.width = wp + '%';
+  }, 120);
+}
+</script>
+</body>
+</html>

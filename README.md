@@ -224,28 +224,75 @@ Raw data is **immutable** — all transformations produce new files in `processe
 
 ### Feature Extraction
 
-Once text has been extracted from PDFs, the features module sends it to an LLM to produce structured signals:
+Once text has been extracted from PDFs, the features module sends it to an LLM to produce structured signals. The v2 schema (`feature_version = "v2"`) replaces subjective 1–5 ratings with ~40 **existence-based booleans** the LLM can observe in the claim text, and uses a **unilateral perspective** (`user_*` vs `opposing_party_*`) rather than symmetric plaintiff/defendant pairs. `user_side` is auto-detected per case from whether a `DEFENDANT_S_CLAIM` document exists, and `user_is_plaintiff` is stored alongside the LLM features.
+
+Every boolean follows a strict rule the LLM is instructed on:
+- `true` — the thing is explicitly mentioned, stated, attached, or named in the text
+- `false` — the text addresses the topic but the thing is absent (e.g., the claim describes evidence but no photos are mentioned)
+- `null` — the topic is not addressed in the text, or it's genuinely ambiguous
+
+**Classification + amount**
 
 | Feature | Type | Description |
 |---|---|---|
-| `evidence_strength` | 1–5 int | Quality and quantity of supporting evidence |
-| `contract_present` | bool | Whether a written contract is referenced |
-| `argument_clarity_plaintiff` | 1–5 int | Coherence of plaintiff's arguments |
-| `argument_clarity_defendant` | 1–5 int | Coherence of defendant's arguments |
-| `claim_category` | string | E.g., unpaid_debt, property_damage, breach_of_contract |
+| `claim_category` | string | unpaid_debt / property_damage / service_dispute / security_deposit / personal_injury / breach_of_contract / fraud / other |
 | `monetary_amount_claimed` | float | Dollar amount claimed |
-| `prior_attempts_to_resolve` | bool | Evidence of prior negotiation or demand letters |
-| `witness_count` | int | Number of witnesses mentioned |
-| `documentary_evidence` | bool | Whether documents/photos/receipts are referenced |
-| `timeline_clarity` | 1–5 int | How clear the timeline of events is |
-| `legal_representation_plaintiff` | bool | Whether plaintiff has an attorney |
-| `legal_representation_defendant` | bool | Whether defendant has an attorney |
-| `counterclaim_present` | bool | Whether the defendant filed a counterclaim |
-| `default_judgment_likely` | bool | Whether defendant appears absent/non-responsive |
 
-These are merged with metadata-derived features (plaintiff count, defendant count, text length, document count) into a `FeatureVector` that becomes the model input.
+**Representation (unilateral)**
+
+| Feature | Type | Description |
+|---|---|---|
+| `user_has_attorney` | bool | User side's attorney is named or referenced |
+| `opposing_party_has_attorney` | bool | Opposing party's attorney is named or referenced |
+| `opposing_party_filed_response_documents` | bool | Opposing party filed any response/answer/counterclaim (False = default-risk) |
+
+**Counter-filings / contract presence**
+
+| Feature | Type | Description |
+|---|---|---|
+| `counterclaim_present` | bool | A counterclaim is explicitly mentioned |
+| `contract_present` | bool | A written or verbal contract/agreement is referenced |
+
+**Evidence existence (10 booleans)**
+
+`has_photos_or_physical_evidence`, `has_receipts_or_financial_records`, `has_written_communications`, `has_witness_statements`, `has_signed_contract_attached`, `has_repair_or_replacement_estimate`, `has_police_report`, `has_medical_records`, `has_expert_assessment`, `has_invoices_or_billing_records`
+
+**Argument content (8 booleans)**
+
+`argument_cites_specific_dates`, `argument_cites_specific_dollar_amounts`, `argument_cites_contract_or_document`, `argument_has_chronological_timeline`, `argument_names_specific_witnesses`, `argument_quantifies_each_damage_component`, `argument_cites_statute_or_legal_basis`, `argument_identifies_specific_location`
+
+**Procedural / pre-filing conduct (4 booleans)**
+
+`sent_written_demand_letter`, `sent_certified_mail`, `gave_opportunity_to_cure`, `attempted_mediation`
+
+**Contract detail (4 booleans, null if no contract)**
+
+`contract_is_written`, `contract_is_signed_by_both_parties`, `contract_specifies_deadline_or_term`, `contract_specifies_payment_amount`
+
+**Damages breakdown (5 booleans)**
+
+`damages_include_out_of_pocket_costs`, `damages_include_lost_wages`, `damages_include_property_value_loss`, `damages_are_ongoing`, `damages_have_third_party_valuation`
+
+**Jurisdictional + claim-scope (4 booleans)**
+
+`claim_amount_stated_in_dollars`, `claim_amount_is_within_small_claims_limit`, `user_seeks_interest`, `user_seeks_court_costs`
+
+**Counts + derived**
+
+| Feature | Type | Description |
+|---|---|---|
+| `plaintiff_count` | int | LLM-extracted count of distinct plaintiff parties |
+| `defendant_count` | int | LLM-extracted count of distinct defendant parties |
+| `witness_count` | int | LLM-extracted count of witnesses mentioned |
+| `text_length` | int | Derived from concatenated non-label text |
+| `document_count` | int | Number of non-label documents included |
+| `user_is_plaintiff` | bool | Derived: True unless a `DEFENDANT_S_CLAIM` txt exists for the case |
+
+**Leakage firewall**: outcome documents (judgments, orders, dismissals, stipulations, notices of entry of judgment) are excluded from the text sent to feature extraction — features must only see the pre-outcome record. See `features/labels.py::LABEL_DOC_KEYWORDS` for the exclusion list.
 
 The LLM prompt enforces JSON-only output with no explanation text. Feature extraction is **idempotent** and **cached** — the same input always produces the same features, and results are stored in `data/features_cache/` to avoid redundant LLM calls.
+
+The Colab notebook (`notebooks/colab_gpu_extraction.ipynb`) has a Step 6 cell that builds `ProcessedCase` objects from the Drive-mounted extracted-text tree, auto-detects `user_side`, and runs `FeatureExtractor.extract_batch` writing cache JSONs to `{DRIVE_DIR}/features_cache/`. Supports `MY_WORKER`/`TOTAL_WORKERS` stride sharding for team parallelization.
 
 ### Model Training
 

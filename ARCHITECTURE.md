@@ -33,10 +33,15 @@
 │                                                                     │
 │  features/extraction.py → FeatureExtractor                          │
 │    - Sends case text to LLM (OpenAI-compatible API)                 │
-│    - Parses JSON response → LLMFeatures (evidence strength,         │
-│      contract_present, argument clarity, etc.)                      │
-│    - Merges with case metadata → FeatureVector                      │
-│    - SHA256-keyed disk cache (idempotent)                           │
+│    - Parses JSON response → LLMFeatures (~40 existence-based        │
+│      booleans: has_*, argument_*, sent_*, damages_*, contract_*,    │
+│      plus claim_category, monetary_amount_claimed, counts)          │
+│    - Unilateral: user_has_attorney vs opposing_party_has_attorney;  │
+│      user_side threaded from ProcessedCase into the prompt          │
+│    - Merges with derived counts (text_length, document_count,       │
+│      user_is_plaintiff) → FeatureVector                             │
+│    - SHA256-keyed disk cache (idempotent); feature_version = "v2"   │
+│    - Leakage firewall: label docs excluded from input text          │
 │                                                                     │
 │  features/labels.py → separate LLM pipeline for outcome labels      │
 │  features/prompts.py → prompt templates                             │

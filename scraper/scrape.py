@@ -23,6 +23,7 @@ from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
+
 load_dotenv(Path(__file__).parent.parent / ".env", override=True)
 
 from scraper.config import ScraperConfig
@@ -51,7 +52,9 @@ def run_enumerate(start: str, end: str, config: ScraperConfig, session_id: str) 
 
     logger.info(
         "Done. Probed: %d | Found: %d | Total valid: %d",
-        stats["probed"], stats["found"], store.valid_count,
+        stats["probed"],
+        stats["found"],
+        store.valid_count,
     )
 
 
@@ -153,8 +156,12 @@ def run_download(config: ScraperConfig, session_id: str, extract: bool) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="SF Small Claims scraper — case number mode")
     parser.add_argument("--enumerate", action="store_true", help="Probe case number range")
-    parser.add_argument("--start", default="CSM25870100", help="Start case number (default: CSM25870100)")
-    parser.add_argument("--end", default="CSM25879999", help="End case number (default: CSM25879999)")
+    parser.add_argument(
+        "--start", default="CSM25870100", help="Start case number (default: CSM25870100)"
+    )
+    parser.add_argument(
+        "--end", default="CSM25879999", help="End case number (default: CSM25879999)"
+    )
     parser.add_argument("--download", action="store_true", help="Download PDFs for all valid cases")
     parser.add_argument("--no-extract", action="store_true", help="Skip text extraction")
     args = parser.parse_args()

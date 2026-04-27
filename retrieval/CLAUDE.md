@@ -1,42 +1,20 @@
 # Retrieval Module
 
-Finds similar historical cases using sentence-transformers + FAISS.
+Embedding-based similar case retrieval and explanation generation grounded in historical examples.
 
-## File Map
+## Responsibilities
 
-| File | Purpose |
-|---|---|
-| `embeddings.py` | EmbeddingModel — embed(), embed_batch(), L2-normalized |
-| `index.py` | CaseIndex (FAISS), CaseMetadataStore, SimilarCaseResult |
-| `config.py` | Embedding model, index path, top-K, similarity threshold |
+- Generate embeddings for case text (using a sentence/document embedding model)
+- Build and maintain a vector index of historical cases
+- Given a new case, retrieve the top-K most similar historical cases
+- Use retrieved cases to generate explanations that are grounded in real examples
+- Provide context for predictions — "cases like yours typically resulted in..."
 
-## How It Works
+## Key Considerations
 
-1. At index build time: embed all case texts → add to FAISS flat IP index
-2. At inference time: embed query text → search index → return top-K similar cases
-3. Metadata store (JSON) maps index positions → case number, title, outcome
-
-## Config Defaults
-
-- Embedding model: `all-MiniLM-L6-v2` (sentence-transformers)
-- Top-K: 5 similar cases
-- Similarity threshold: 0.3 (inner product after L2 normalization = cosine similarity)
-- Index path: `data/retrieval_index`
-
-## Usage
-
-```python
-from retrieval.index import CaseIndex
-from retrieval.config import RetrievalConfig
-
-index = CaseIndex(RetrievalConfig())
-index.build(case_texts, metadata_list)
-index.save()
-
-results = index.search(query_text, top_k=5)
-# returns list of SimilarCaseResult(case_number, title, outcome, similarity_score)
-```
-
-## Purpose in Pipeline
-
-Similar cases ground the LLM explanation in real examples. The API `/similar` endpoint returns these alongside predictions so users can see "here are 3 cases like yours and what happened."
+- Embedding model choice affects retrieval quality — needs evaluation
+- Vector store options: FAISS, ChromaDB, Pinecone, or similar
+- Retrieval is a complement to prediction, not a replacement
+- Explanations must reference real cases, not hallucinated examples
+- Index needs to be rebuilt/updated when new historical data is added
+- Latency matters if used in real-time inference path

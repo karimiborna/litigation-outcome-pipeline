@@ -1,8 +1,8 @@
 # CI/CD Workflows
 
-Four GitHub Actions workflows automate testing, validation, and deployment.
+GitHub Actions workflows for automated testing, validation, building, and deployment.
 
-## Workflows
+## Responsibilities
 
 **`ci.yml`** — Runs on every PR and push to main
 - Lint with ruff (`ruff check`)
@@ -11,9 +11,7 @@ Four GitHub Actions workflows automate testing, validation, and deployment.
 - Run all unit tests with pytest (Python 3.10 + 3.12 matrix)
 - Fails PR if any step fails
 
-**`data-validation.yml`** — Runs on push to main
-- Validates data schemas
-- Checks that raw/processed data structure is intact
+## Key Considerations
 
 **`docker-build.yml`** — Runs on push to main
 - Builds both Docker images (features + inference)

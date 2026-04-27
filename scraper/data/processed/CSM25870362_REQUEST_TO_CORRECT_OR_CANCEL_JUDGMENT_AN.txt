@@ -1,0 +1,76 @@
+SC-108
+Request to Correct or Cancel
+Judgment and Answer
+
+Request
+This form is used to ask the court to correct or cancel a small claims judgment. You must file this form no later than 30 days after the clerk mailed form SC-130, Notice of Entry of Judgment. Filing this form does not extend the deadline to file an appeal.
+
+If you are the person asking the court to correct or cancel a judgment, fill out 1-5 on this page, then file it at the clerk's office. The clerk will mail a copy of the form to all other plaintiffs and defendants in your case. The court will give the other plaintiffs and defendants at least 10 days to answer this Request. The court will mail its decision to you or tell you to go to a court hearing. If you did not go to the trial, you must use form SC-135, Notice of Motion to Vacate Judgment and Declaration.
+
+If you receive this form, read below, then fill out 6 through 9 on page 2. The court will mail its decision to you or tell you to go to a court hearing.
+
+1 The person asking the court to correct or cancel a judgment is:
+Name: Steven O'Connor
+Address: 88 Perry St Apt 525 525
+San Francisco, CA 94107
+Check one: A defendant in this case A plaintiff in this case
+
+2 Notice to:
+(List names and addresses of all other defendants and plaintiffs in your case.)
+Name: Yerba Buena Commons
+Address: 88 Perry St Suite 600
+San Francisco, CA 94107
+
+3 I ask the court to (check one):
+a. Correct the following clerical error in the judgment.
+List the error:
+Change to:
+Explain why this correction is needed:
+
+b. Cancel the judgment because the court applied the wrong law to this case. (Explain):
+See Attachment 1
+
+4 Check here if you need more space. Use form MC-031 or a plain sheet of paper. Write "SC-108, Item 3" on top.
+
+5 In making its order, I ask the court to consider the information on this form, any records on file, and, if the court holds a hearing, the evidence presented at that hearing.
+
+6 I declare under penalty of perjury under California state law that the information above and on all attachments is true and correct.
+
+Date: 11/5/25
+Steven O'Connor
+Type or print your name
+Sign your name
+
+Judicial Council of California, courts.ca.gov Revised July 1, 2025, Optional Form Code of Civil Procedure, § 116.725; Cal. Rules of Court, rule 3.2107
+
+SC-108, Page 1 of 2
+
+--- PAGE BREAK ---
+
+SC-108 ITEM 3
+
+Attachment 1
+
+I appeared at the hearing and respectfully request that the Court vacate (set aside) the judgment under California Code of Civil Procedure section 116.720(b) and, in the alternative, under section 473(b), on the grounds of mistake of law and fact.
+
+California's Fire Code, adopted statewide as Title 24, Part 9 of the California Code of Regulations, requires fire alarm systems to be installed and maintained "in accordance with this code and NFPA 72." (Cal. Fire Code § 907.2.) The California Building Standards Commission has incorporated the National Fire Alarm and Signaling Code (NFPA 72, 2019 edition) by reference, making its provisions legally binding within California. The Fire Code further mandates that fire-protection systems be inspected, tested, and maintained in accordance with these referenced standards. (CFC § 901.6; § 907.)
+
+NFPA 72, as incorporated by California, distinguishes between "inspection" and "testing." Under NFPA 72 section 3.3.105, inspection is defined as "a visual examination of a system or portion thereof to verify that it appears to be in operating condition and is free of physical damage." By contrast, NFPA 72 section 3.3.199 defines testing as "a procedure used to determine the operational status of a system or portion thereof by activation of system components." These definitions are mirrored across NFPA's inspection, testing, and maintenance (ITM) standards, including NFPA 25 section 3.3.23 ("visual examination") and section 3.3.47 ("operational check by activation"). Thus, under California's adopted fire-safety law, an inspection does not involve activation of audible or visual alarms, while a test does. A notice of "inspection" is not legally sufficient to warn occupants of an impending "test."
+
+NFPA 72 section 14.2.4.1 establishes a clear duty to provide advance warning before any testing that will trigger alarm or notification appliances. It provides that "before proceeding with any testing, all persons and facilities receiving alarm, supervisory, or trouble signals and all building occupants shall be notified of the testing to prevent unnecessary response." (Emphasis added.) Section 14.2.4.2 requires follow-up notification that testing has concluded. Because California has adopted NFPA 72 by reference through CFC section 907, this occupant-notification requirement is part of California law.
+
+NFPA 72 also limits sound levels from audible alarm devices. Chapter 18 requires that alarm audibles exceed ambient sound levels by 15 decibels (or by 5 decibels above the maximum ambient sound measured over 60 seconds) but may not exceed 110 decibels at the minimum hearing distance. These limits reflect a recognition that alarm testing can expose occupants to sound levels capable of causing acoustic injury. OSHA regulations at 29 Code of Federal Regulations section 1910.95 likewise require hearing-conservation
+
+--- PAGE BREAK ---
+
+SC108 Item 3
+
+CSM-25-870362
+
+measures beginning at an 85 dBA time-weighted average and acknowledge that impulsive or peak noise exposure can cause hearing damage. Together, these standards underscore the importance of notice and precaution when conducting alarm tests.
+
+In this case, no notice was given that a fire alarm test—rather than a mere inspection—would occur, nor that hearing protection might be required. Had I been informed that a test would take place, I would have left the premises or taken measures to protect my hearing. The lack of notice constituted a breach of the defendant's duty of care under the California Fire Code and NFPA 72 and directly caused hearing damage in the form of tinnitus, for which I now am told, will require hearing aids for life.
+
+The judgment appears to rest on the mistaken premise that an "inspection" notice satisfies the legal requirement for notice of a "test." That interpretation contradicts the plain language of the controlling fire-safety standards adopted under Title 24 and the National Fire Alarm and Signaling Code. Because this misapplication of law and fact materially affected the outcome, I respectfully request that the Court vacate or reconsider the judgment in the interest of justice under Code of Civil Procedure sections 116.720(b) and 473(b).
+
+P 2

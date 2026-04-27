@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM26871069",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 2200.0,
+  "amount_awarded_costs": 125.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": true,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": false,
+  "judgment_date": "2026-03-20",
+  "outcome_summary": "The court ruled in favor of the plaintiff, awarding $2,200 in principal and $125 in costs."
+}

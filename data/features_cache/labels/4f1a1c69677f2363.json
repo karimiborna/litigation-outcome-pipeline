@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870499",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 2736.0,
+  "amount_awarded_costs": 120.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": true,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": false,
+  "judgment_date": "2025-11-18",
+  "outcome_summary": "The court ruled in favor of the plaintiff, ordering the defendant to pay $2,736.00 in principal and $120.00 in costs."
+}

@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870456",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 3735.0,
+  "amount_awarded_costs": 0.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": true,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": false,
+  "judgment_date": "2025-11-07",
+  "outcome_summary": "The court ruled in favor of Linda Nereida Camacho, awarding her $3,735 in principal."
+}

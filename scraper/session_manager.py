@@ -46,4 +46,4 @@ def start_keepalive(session_id: str) -> None:
         t.start()
         print(f"Keepalive started (ping every {PING_INTERVAL}s).")
     else:
-        print(f"Keepalive updated with new session ID.")
+        print("Keepalive updated with new session ID.")

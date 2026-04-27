@@ -1,0 +1,43 @@
+**Extracted Text from San Francisco Small Claims Court Document**
+
+*   **Case Information:**
+    *   **Case Number:** CSM-25-B-70-748
+    *   **Court:** Superior Court of California, County of San Francisco
+    *   **Date Filed:** December 16, 2025
+*   **Parties:**
+    *   **Plaintiff/Petitioner:** Stephen Malloy
+    *   **Defendant/Respondent:** Constelli's
+*   **Claim Amount:** Not specified
+*   **Ruling:** Request for Dismissal
+*   **Reason for Dismissal:** Not specified
+*   **Filing Status:** Filed on December 16, 2025
+*   **Clerk's Signature:** Cassandra Vasquez, Deputy Clerk
+*   **Additional Information:**
+    *   **Type of Action:** Small Claims
+    *   **Court Location:** 400 McAllister Street, San Francisco, CA 94102
+
+--- PAGE BREAK ---
+
+**Extracted Text:**
+
+* **Case Number:** CSM-25-870-748
+* **Plaintiff/Petitioner:** Stephen Malloy
+* **Defendant/Respondent:** Constellis
+* **Court's Recovery of Waived Court Fees and Costs:**
+	+ If a party whose court fees and costs were initially waived has recovered or will recover $10,000 or more in value by way of settlement, compromise, arbitration award, mediation settlement, or other means, the court has a statutory lien on that recovery. The court may refuse to dismiss the case until the lien is satisfied. (Gov. Code, § 68637.)
+* **Declaration Concerning Waived Court Fees:**
+	1. The court waived court fees and costs in this action for (name): Stephen Malloy
+	2. The person named in item 1 is (check one below):
+		a. [ ] not recovering anything of value by this action.
+		b. [ ] recovering less than $10,000 in value by this action.
+		c. [ ] recovering $10,000 or more in value by this action. (If item 2c is checked, item 3 must be completed.)
+	3. All court fees and court costs that were waived in this action have been paid to the court (check one):
+		[ ] Yes
+		[ ] No
+* **I declare under penalty of perjury under the laws of the State of California that the information above is true and correct.**
+* **Date:** 12/15/25
+* **Signature:** Stephen Malloy
+* **Type or Print Name of Attorney:** [Blank]
+* **Party Making Declaration:** [Blank]
+
+**Note:** The document appears to be incomplete, as some sections are left blank. Additionally, the date "12/15/25" seems to be an error, as it is likely intended to be "12/15/2025."

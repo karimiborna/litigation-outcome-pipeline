@@ -1,0 +1,177 @@
+**Extracted Text from San Francisco Small Claims Court Document**
+
+*   **Case Information:**
+    *   **Case Number:** CSM-25-870507
+    *   **Court:** San Francisco Superior Court
+    *   **Address:** 400 McAllister St., San Francisco, CA 94102
+*   **Parties:**
+    *   **Plaintiff/Demandante:** Anna Stofle
+        *   **Address:** 1525 Jerrold Ave., Apt A, San Francisco, CA 94014
+        *   **Phone Number:** (925) 828-7625
+    *   **Defendant/Demandado:** Daniel D. Barry III
+        *   **Address:** 450 Sutter St., Suite 1326, San Francisco, CA 94108
+*   **Filing Date:** December 23, 2025
+*   **Hearing Information:**
+    *   **Hearing Date:** January 22, 2026
+    *   **Time:** 8:30 AM
+    *   **Location:** Superior Court, 400 McAllister, Room 103, San Francisco, California 94102
+*   **Notice of Motion to Vacate (Cancel) Judgment:**
+    *   **Date:** January 22, 2026
+    *   **Time:** 8:30 AM
+    *   **Location:** Superior Court, 400 McAllister, Room 103, San Francisco, California 94102
+*   **Clerk's Certificate of Mailing:**
+    *   **Date:** December 23, 2025
+    *   **Clerk:** Ricardo Cabrera
+    *   **Deputy Clerk:** [Signature]
+*   **Other Information:**
+    *   **Form Approved for Optional Use:** Judicial Council of California
+    *   **Form Number:** SC-135 (Rev. January 1, 2007)
+    *   **Code of Civil Procedure:** § 116.720, 116.730, 116.740, www.courts.ca.gov
+
+--- PAGE BREAK ---
+
+**STATEMENT OF FACTS**
+
+On September 19, 2025 Plaintiff filed Small Claims Complaint Case No.: CSM-25-870507. (See copy of Register of Actions for Case No.: CSM-25-870507, attached hereto)
+
+This case was set for hearing on November 6, 2025.
+
+On this same date, September 19, 2025, Plaintiff filed Small Claims Complaint Case No.: CSM-25-870508. (See copy of Register of Actions for Case No.: CSM-25-870508, attached hereto)
+
+This case was set for hearing on November 6, 2025.
+
+Case No. CSM-25-870508 was never served upon Dr. Barry (although the register of actions contains a purported Proof of Service.)
+
+On October 30, 2025, Dr. Barry filed a request to postpone the trial of Case No.: CSM-25-hearing 870507. (See copy of Register of Actions for Case No.: CSM-25-870507, attached hereto)
+
+On **November 3, 2025**, the court entered an order continuing the hearing on Case No.: CSM-25-870507 to **February 17, 2026**. (See copy of Register of Actions for Case No.: CSM-25-870507, and Order on Request to Postpone Trial, attached hereto)
+
+Dr. Barry did not attend the hearing on November 6, 2025 because he believed it had been continued to February 17, 2026.
+
+Dr. Barry did not receive the Notice of Entry of Judgments (one for $0.00 in Case No.: CSM-25-870508; and one for $9,173.20, plus $75.00 costs in case No.: CSM-25-870507), until the week of November 24, 2025. Upon receipt of the same, he did not immediately understand what they were as the court had previously postponed the hearing to February 17, 2026.
+
+--- PAGE BREAK ---
+
+**Case Information**
+
+*   **Case Number:** CSM25870507
+*   **Title:** ANNA STOFLE VS. DANIEL D BARRY III
+*   **Cause of Action:** MONEY
+*   **Generated:** 2023-12-22 3:38 pm
+
+**Register of Actions**
+
+*   **Parties**
+    *   **Plaintiff:** ANNA STOFLE
+    *   **Defendant:** DANIEL D BARRY III
+*   **Attorneys**
+    *   **Plaintiff's Attorney:** Not listed
+    *   **Defendant's Attorney:** Not listed
+*   **Calendar**
+    *   **Hearing Date:** November 6, 2025
+    *   **Hearing Time:** 8:30 am
+*   **Payments**
+    *   **Filing Fee:** $75.00
+    *   **Service Fee:** $0.00
+*   **Documents**
+    *   **Complaint:** Filed on October 20, 2023
+    *   **Answer:** Not filed
+    *   **Default Judgment:** Entered on November 6, 2025
+
+**Rulings**
+
+*   **Default Judgment:** Entered on November 6, 2025, in favor of the plaintiff for $12,500.00
+*   **Costs:** Awarded to the plaintiff in the amount of $75.00
+
+**Other Information**
+
+*   **Court:** San Francisco Small Claims Court
+*   **Judge:** Josh Fredricks
+*   **Clerk:** M. De Luna
+
+--- PAGE BREAK ---
+
+**Case Information**
+
+*   **Case Number:** CSM25870508
+*   **Title:** ANNA STOFLE VS. DANIEL BARRY III
+*   **Cause of Action:** MONEY
+*   **Generated:** 2025-12-22 3:39 pm
+
+**Register of Actions**
+
+*   **Parties**
+    *   **Plaintiff:** ANNA STOFLE
+    *   **Defendant:** DANIEL BARRY III
+*   **Calendar**
+    *   **Hearing Date:** NOV-06-2025
+*   **Payments**
+    *   **Claim Amount:** $12,500.00
+    *   **Fee:** $75.00
+*   **Documents**
+    *   **Proof of Service Filed:** OCT-20-2025
+    *   **Personal Service as to Defendant Barry III, Daniel Barry**
+
+**Rulings**
+
+*   **Notice of Entry of Judgment:** 2025-11-13
+*   **Small Claims Hearing of NOV-06-2025 - Judgment:** 2025-11-13
+*   **Small Claims Calendar of NOV-06-2025 - Taken Under Submission as of NOV-06-2025 by Visiting Judge Josh Fredricks:** 2025-11-13
+*   **Proof of Service Filed on Claim of Plaintiff Service Fee Was $0.00 Served OCT-20-2025, Personal Service as to Defendant Barry III, Daniel Barry:** 2025-10-27
+*   **Money Claim of Plaintiff for $12,500.00 Filed by Stofle, Anna as to Defendant Barry III, Daniel Barry Order Setting Trial Issued for NOV-06-2025 at 08:30 AM in Dept 506:** 2025-09-19
+
+--- PAGE BREAK ---
+
+**Document Text Extraction**
+
+The document is a court order for a request to postpone a trial in a small claims case. The text on the page includes:
+
+* **Case Information:**
+	+ Case Number: CSM-25-870507
+	+ Case Name: STOFLE VS. BARRY III
+* **Party Names:**
+	+ Plaintiff: STOFLE
+	+ Defendant: BARRY III
+* **Dates:**
+	+ Filing Date: November 4, 2025
+	+ Hearing Date: February 17, 2026
+	+ Time: 8:30 am
+	+ Department: [Not specified]
+* **Claim Amount:**
+	+ Not specified
+* **Rulings:**
+	+ The request to postpone the trial is approved.
+	+ The court orders the trial to be postponed as indicated in section 3.
+* **Other Information:**
+	+ The clerk will mail a copy of this order to the parties.
+	+ The person who asked for the postponement is responsible for mailing the order to all plaintiffs and defendants at the addresses listed in the court's records.
+
+Note that some information, such as the claim amount and department, is not specified on the page.
+
+--- PAGE BREAK ---
+
+**PROOF OF SERVICE**
+
+I, Noelle Aylard, declare that I am employed in the county of Contra Costa, California, am over the age of eighteen years, and am not a party to the within entitled cause. My business address is 700 Ygnacio Valley Rd., Suite 350, Walnut Creek, CA 94596.
+
+I am an active member of the State Bar of California, whose business address is 700 Ygnacio Valley Rd., Suite 350, Walnut Creek, CA 94596, and not a party to the within cause.
+
+On December 22, 2025, I served the attached:
+
+**NOTICE OF MOTION TO VACATE JUDGMENT**
+
+on each of the parties or the attorneys for such parties involved in this action,
+
+Anna Stofle
+1525 Jerrold Ave., Apt A
+San Francisco, CA 94014
+Email: anna.stofle@gmail.com
+Plaintiff, in Pro Per
+
+(BY ELECTRONIC MAIL) I transmitted an electronic version of the document(s) by electronic mail to the person(s) at the e-mail address(es) listed above.
+
+(BY REGULAR MAIL) I placed the envelope(s) for collection and mailing on the date and at the place shown below, following our ordinary business practices. I am readily familiar with this business' practice of collecting and processing correspondence for mailing. On the same day that correspondence is placed for collection and mailing, it is deposited in the ordinary course of business with the U.S. Postal Service, in a sealed envelope(s) with postage fully prepaid.
+
+I declare/certify under penalty of perjury under the laws of the state of California that the foregoing is true and correct. Executed on, December 22, 2025, at Walnut Creek, California.
+
+Noelle Aylard

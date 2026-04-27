@@ -1,0 +1,27 @@
+**Document Text Extraction**
+
+The document is a court filing from the Superior Court of California, County of San Francisco. The text on the page includes:
+
+* **Case Information:**
+	+ Case No.: CSM-25-870479
+	+ Department No. 506
+	+ Date Filed: December 2, 2025
+* **Party Names:**
+	+ Plaintiff: SHAHEEN A ASBAGH
+	+ Defendant: BMW OF MOUNTAIN VIEW
+* **Claim Amount:**
+	+ Not specified
+* **Rulings:**
+	+ Stipulation to Use Judge Pro Tem (Cal. Const. art. VI § 21)
+	+ David Fleisig shall serve as Judge Pro Tem for the trial of this case
+	+ The Judge Pro Tem will be the judge for all trial purposes, including in limine motions
+	+ Any motions or hearings which are scheduled for the Court to hear shall conform to applicable statutes and court rules
+	+ We hereby represent to the Court that all essential parties have appeared herein and that this case is at issue as to all such parties; that no amended or supplemental complaint or cross-complaint or other affirmative pleading remains unanswered; no other parties will be served with a summons prior to the time of trial
+* **Other Information:**
+	+ THE FOREGOING IS STIPULATED AND AGREED, December 2, 2025, AND TO BY:
+	+ Plaintiff/Print Name: [blank]
+	+ Plaintiff/Signature: [blank]
+	+ Defendant/Print Name: Shahram Fakhraee
+	+ Defendant/Signature: [signature]
+
+Note: The document does not specify a claim amount, and some fields are left blank.

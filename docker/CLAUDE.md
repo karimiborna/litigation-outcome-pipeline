@@ -1,18 +1,17 @@
 # Docker Module
 
-Two Docker images — one for LLM-heavy feature extraction, one for lightweight inference.
+Containerization configuration for reproducible builds and deployments.
 
-## Images
+## Responsibilities
 
-**`Dockerfile.features`** — Feature extraction service
-- Heavier image (LLM dependencies)
-- Runs the feature extraction pipeline
-- Requires NVIDIA_API_KEY
+- Dockerfile(s) for each service:
+  - Feature extraction service (LLM-dependent, heavier)
+  - Model inference / API service (lightweight, fast)
+- Docker Compose for local multi-service development
+- Base image selection and dependency management
+- Build optimization (layer caching, multi-stage builds)
 
-**`Dockerfile.inference`** — Inference service
-- Lighter image (FastAPI + scikit-learn)
-- Serves the API endpoints
-- Loads models from MLflow at startup
+## Key Considerations
 
 - Separate containers for feature extraction and inference to allow independent scaling
 - Keep images small — use multi-stage builds and slim base images

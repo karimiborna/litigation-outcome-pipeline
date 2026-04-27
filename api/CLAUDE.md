@@ -1,8 +1,8 @@
 # API Module
 
-FastAPI inference service — the user-facing layer of the pipeline.
+Inference service for serving predictions, retrievals, and counterfactual analyses.
 
-## File Map
+## Responsibilities
 
 | File | Purpose |
 |---|---|
@@ -10,7 +10,7 @@ FastAPI inference service — the user-facing layer of the pipeline.
 | `dependencies.py` | AppState singleton — loads models, feature extractor, and retrieval index |
 | `schemas.py` | Pydantic request/response models |
 
-## Endpoints
+## Key Considerations
 
 | Method | Path | Purpose |
 |---|---|---|
