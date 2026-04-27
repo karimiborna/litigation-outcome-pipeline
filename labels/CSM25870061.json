@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870061",
+  "outcome": "defendant_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": null,
+  "amount_awarded_costs": null,
+  "amount_awarded_interest": null,
+  "defendant_appeared": true,
+  "has_attorney_plaintiff": true,
+  "has_attorney_defendant": false,
+  "judgment_date": "2025-10-22",
+  "outcome_summary": "The judgment was reversed in favor of the defendant, Susan Berston."
+}

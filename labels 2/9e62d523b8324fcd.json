@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870176",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 1669.34,
+  "amount_awarded_costs": 102.5,
+  "amount_awarded_interest": 102.5,
+  "defendant_appeared": null,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": false,
+  "judgment_date": "2025-09-23",
+  "outcome_summary": "The court ruled in favor of the plaintiff, ordering the defendant to pay a total of $1,874.34."
+}

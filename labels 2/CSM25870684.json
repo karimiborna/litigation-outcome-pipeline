@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870684",
+  "outcome": "dismissed",
+  "dismissal_type": null,
+  "amount_awarded_principal": 0.0,
+  "amount_awarded_costs": 0.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": null,
+  "has_attorney_plaintiff": true,
+  "has_attorney_defendant": null,
+  "judgment_date": null,
+  "outcome_summary": "The case was dismissed without a specified reason."
+}

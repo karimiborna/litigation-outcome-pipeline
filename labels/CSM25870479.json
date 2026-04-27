@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870479",
+  "outcome": "dismissed",
+  "dismissal_type": "with_prejudice",
+  "amount_awarded_principal": 0.0,
+  "amount_awarded_costs": 0.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": false,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": false,
+  "judgment_date": "2025-12-08",
+  "outcome_summary": "The court ordered dismissal of the entire action with prejudice due to no appearance by the plaintiff."
+}

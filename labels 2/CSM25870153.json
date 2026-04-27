@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870153",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 12500.0,
+  "amount_awarded_costs": 150.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": false,
+  "has_attorney_plaintiff": null,
+  "has_attorney_defendant": null,
+  "judgment_date": "2025-09-17",
+  "outcome_summary": "The court ruled in favor of the plaintiff, Jerold Ellis, awarding him $12,500 in principal and $150 in costs."
+}

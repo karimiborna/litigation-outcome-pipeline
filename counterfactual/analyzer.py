@@ -8,6 +8,7 @@ from typing import Any
 import pandas as pd
 
 from features.schema import FeatureVector
+from models.dataset import MODEL_FEATURE_COLUMNS, feature_vector_to_model_frame
 
 logger = logging.getLogger(__name__)
 
@@ -102,14 +103,24 @@ class CounterfactualAnalyzer:
         If perturbations is None, auto-generates meaningful perturbations
         for all perturbable features.
         """
-        base_input = feature_vector.to_model_input()
-        base_df = pd.DataFrame([base_input])
+        uses_v2_features = self._uses_v2_feature_space()
+        if uses_v2_features:
+            base_df = feature_vector_to_model_frame(feature_vector)
+            expected = list(self._classifier.feature_names_in_)
+            base_df = base_df.reindex(columns=expected)
+            base_input = base_df.iloc[0].to_dict()
+        else:
+            base_input = feature_vector.to_model_input()
+            base_df = pd.DataFrame([base_input])
 
         base_win_prob = float(self._classifier.predict_proba(base_df)[0, 1])
         base_monetary = float(self._regressor.predict(base_df)[0])
 
         if perturbations is None:
-            perturbations = self._auto_perturbations(base_input)
+            if uses_v2_features:
+                perturbations = self._auto_perturbations_v2(base_input)
+            else:
+                perturbations = self._auto_perturbations(base_input)
 
         results: list[CounterfactualResult] = []
         for feature_name, new_value in perturbations.items():
@@ -126,6 +137,8 @@ class CounterfactualAnalyzer:
             modified = base_input.copy()
             modified[feature_name] = new_value
             modified_df = pd.DataFrame([modified])
+            if uses_v2_features:
+                modified_df = modified_df.reindex(columns=list(self._classifier.feature_names_in_))
 
             new_win_prob = float(self._classifier.predict_proba(modified_df)[0, 1])
             new_monetary = float(self._regressor.predict(modified_df)[0])
@@ -144,6 +157,28 @@ class CounterfactualAnalyzer:
 
         results.sort(key=lambda r: abs(r.win_prob_delta), reverse=True)
         return results
+
+    def _uses_v2_feature_space(self) -> bool:
+        expected = getattr(self._classifier, "feature_names_in_", None)
+        if expected is None:
+            return False
+        return set(expected).issubset(set(MODEL_FEATURE_COLUMNS))
+
+    def _auto_perturbations_v2(self, base_input: dict[str, float]) -> dict[str, float]:
+        """Generate simple perturbations for the trained v2 feature frame."""
+        perturbations: dict[str, float] = {}
+        for feature_name, current in base_input.items():
+            if feature_name.startswith("feat_claim_category_"):
+                continue
+            if feature_name in {"feat_text_length", "feat_document_count"}:
+                continue
+            if current in (0.0, 1.0):
+                perturbations[feature_name] = 1.0 - current
+            elif feature_name == "feat_monetary_amount_claimed":
+                perturbations[feature_name] = current * 1.5 if current > 0 else 1000.0
+            elif feature_name.endswith("_count") and current >= 0:
+                perturbations[feature_name] = current + 1.0
+        return perturbations
 
     def _auto_perturbations(self, base_input: dict[str, float]) -> dict[str, float]:
         """Generate meaningful perturbations for each perturbable feature."""

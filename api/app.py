@@ -26,6 +26,7 @@ from api.schemas import (
 )
 from data.schemas.case import ProcessedCase
 from features.schema import FeatureVector
+from models.dataset import feature_vector_to_model_frame
 
 logger = logging.getLogger(__name__)
 
@@ -144,9 +145,12 @@ async def counterfactual(request: CounterfactualRequest) -> CounterfactualRespon
     case = _build_processed_case_from_cf(request)
     feature_vector = await app_state.feature_extractor.extract(case)
 
-    results = app_state.counterfactual_analyzer.analyze(
-        feature_vector, perturbations=request.perturbations
-    )
+    try:
+        results = app_state.counterfactual_analyzer.analyze(
+            feature_vector, perturbations=request.perturbations
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     items = [
         CounterfactualItem(
@@ -197,9 +201,11 @@ def _build_processed_case_from_cf(request: CounterfactualRequest) -> ProcessedCa
 
 
 def _run_prediction_sync(vector: FeatureVector, case_number: str | None) -> PredictionResponse:
-    import pandas as pd
+    try:
+        model_input = feature_vector_to_model_frame(vector)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    model_input = pd.DataFrame([vector.to_model_input()])
     win_prob = float(app_state.classifier.predict_proba(model_input)[0, 1])
     monetary = float(app_state.regressor.predict(model_input)[0])
 

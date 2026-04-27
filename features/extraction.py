@@ -121,6 +121,61 @@ class FeatureExtractor:
             legal_representation_defendant=llm.legal_representation_defendant,
             counterclaim_present=llm.counterclaim_present,
             default_judgment_likely=llm.default_judgment_likely,
+            user_is_plaintiff=llm.user_is_plaintiff,
+            user_has_attorney=(
+                llm.user_has_attorney
+                if llm.user_has_attorney is not None
+                else llm.legal_representation_plaintiff
+            ),
+            opposing_party_has_attorney=(
+                llm.opposing_party_has_attorney
+                if llm.opposing_party_has_attorney is not None
+                else llm.legal_representation_defendant
+            ),
+            opposing_party_filed_response_documents=(
+                llm.opposing_party_filed_response_documents
+            ),
+            has_photos_or_physical_evidence=llm.has_photos_or_physical_evidence,
+            has_receipts_or_financial_records=llm.has_receipts_or_financial_records,
+            has_written_communications=llm.has_written_communications,
+            has_witness_statements=llm.has_witness_statements,
+            has_signed_contract_attached=llm.has_signed_contract_attached,
+            has_repair_or_replacement_estimate=llm.has_repair_or_replacement_estimate,
+            has_police_report=llm.has_police_report,
+            has_medical_records=llm.has_medical_records,
+            has_expert_assessment=llm.has_expert_assessment,
+            has_invoices_or_billing_records=llm.has_invoices_or_billing_records,
+            argument_cites_specific_dates=llm.argument_cites_specific_dates,
+            argument_cites_specific_dollar_amounts=llm.argument_cites_specific_dollar_amounts,
+            argument_cites_contract_or_document=llm.argument_cites_contract_or_document,
+            argument_has_chronological_timeline=llm.argument_has_chronological_timeline,
+            argument_names_specific_witnesses=llm.argument_names_specific_witnesses,
+            argument_quantifies_each_damage_component=(
+                llm.argument_quantifies_each_damage_component
+            ),
+            argument_cites_statute_or_legal_basis=(
+                llm.argument_cites_statute_or_legal_basis
+            ),
+            argument_identifies_specific_location=llm.argument_identifies_specific_location,
+            sent_written_demand_letter=llm.sent_written_demand_letter,
+            sent_certified_mail=llm.sent_certified_mail,
+            gave_opportunity_to_cure=llm.gave_opportunity_to_cure,
+            attempted_mediation=llm.attempted_mediation,
+            contract_is_written=llm.contract_is_written,
+            contract_is_signed_by_both_parties=llm.contract_is_signed_by_both_parties,
+            contract_specifies_deadline_or_term=llm.contract_specifies_deadline_or_term,
+            contract_specifies_payment_amount=llm.contract_specifies_payment_amount,
+            damages_include_out_of_pocket_costs=llm.damages_include_out_of_pocket_costs,
+            damages_include_lost_wages=llm.damages_include_lost_wages,
+            damages_include_property_value_loss=llm.damages_include_property_value_loss,
+            damages_are_ongoing=llm.damages_are_ongoing,
+            damages_have_third_party_valuation=llm.damages_have_third_party_valuation,
+            claim_amount_stated_in_dollars=llm.claim_amount_stated_in_dollars,
+            claim_amount_is_within_small_claims_limit=(
+                llm.claim_amount_is_within_small_claims_limit
+            ),
+            user_seeks_interest=llm.user_seeks_interest,
+            user_seeks_court_costs=llm.user_seeks_court_costs,
             plaintiff_count=case.plaintiff_count,
             defendant_count=case.defendant_count,
             has_attorney_plaintiff=case.has_attorney_plaintiff,

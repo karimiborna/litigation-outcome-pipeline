@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870111",
+  "outcome": "settled",
+  "dismissal_type": null,
+  "amount_awarded_principal": 2725.33,
+  "amount_awarded_costs": null,
+  "amount_awarded_interest": 190.0,
+  "defendant_appeared": false,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": true,
+  "judgment_date": "2025-08-20",
+  "outcome_summary": "The case was settled prior to the hearing with the defendant paying the plaintiff $4,000."
+}

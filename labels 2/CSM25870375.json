@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870375",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 1212.98,
+  "amount_awarded_costs": 125.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": true,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": false,
+  "judgment_date": "2025-10-24",
+  "outcome_summary": "The court ruled in favor of the plaintiffs, awarding them $1,212.98 in principal and $125.00 in costs."
+}

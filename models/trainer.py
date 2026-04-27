@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -60,6 +61,8 @@ class ClassifierTrainer:
         labels: pd.Series,
         test_size: float = 0.2,
         run_name: str | None = None,
+        extra_params: dict[str, Any] | None = None,
+        artifacts: list[Path] | None = None,
     ) -> dict[str, float]:
         """Train the classifier and log everything to MLflow.
 
@@ -78,6 +81,8 @@ class ClassifierTrainer:
             mlflow.log_param("test_size", test_size)
             mlflow.log_param("n_samples", len(features))
             mlflow.log_param("n_features", features.shape[1])
+            if extra_params:
+                mlflow.log_params(extra_params)
 
             self._model.fit(x_train, y_train)
 
@@ -95,7 +100,7 @@ class ClassifierTrainer:
             log_metrics(metrics)
 
             importances = dict(
-                zip(features.columns, self._model.feature_importances_, strict=False)
+                zip(features.columns, self._model.feature_importances_)
             )
             top_features = sorted(importances.items(), key=lambda x: x[1], reverse=True)[:10]
             for feat_name, importance in top_features:
@@ -106,6 +111,8 @@ class ClassifierTrainer:
                 artifact_path="classifier",
                 registered_name=self._config.classifier_model_name,
             )
+            for artifact in artifacts or []:
+                mlflow.log_artifact(str(artifact))
 
             logger.info("Classifier metrics: %s", metrics)
             return metrics
@@ -139,6 +146,8 @@ class RegressorTrainer:
         labels: pd.Series,
         test_size: float = 0.2,
         run_name: str | None = None,
+        extra_params: dict[str, Any] | None = None,
+        artifacts: list[Path] | None = None,
     ) -> dict[str, float]:
         """Train the regressor and log everything to MLflow.
 
@@ -157,6 +166,8 @@ class RegressorTrainer:
             mlflow.log_param("test_size", test_size)
             mlflow.log_param("n_samples", len(features))
             mlflow.log_param("n_features", features.shape[1])
+            if extra_params:
+                mlflow.log_params(extra_params)
 
             self._model.fit(x_train, y_train)
 
@@ -171,7 +182,7 @@ class RegressorTrainer:
             log_metrics(metrics)
 
             importances = dict(
-                zip(features.columns, self._model.feature_importances_, strict=False)
+                zip(features.columns, self._model.feature_importances_)
             )
             top_features = sorted(importances.items(), key=lambda x: x[1], reverse=True)[:10]
             for feat_name, importance in top_features:
@@ -182,6 +193,8 @@ class RegressorTrainer:
                 artifact_path="regressor",
                 registered_name=self._config.regressor_model_name,
             )
+            for artifact in artifacts or []:
+                mlflow.log_artifact(str(artifact))
 
             logger.info("Regressor metrics: %s", metrics)
             return metrics

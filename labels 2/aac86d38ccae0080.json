@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870468",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 8550.18,
+  "amount_awarded_costs": 155.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": false,
+  "has_attorney_plaintiff": true,
+  "has_attorney_defendant": false,
+  "judgment_date": "2026-01-28",
+  "outcome_summary": "The court affirmed the judgment in favor of Jeffrey Sims, awarding him a total of $8,705.18 against Maya Zysman."
+}

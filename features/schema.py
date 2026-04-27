@@ -25,6 +25,48 @@ class LLMFeatures(BaseModel):
     counterclaim_present: bool | None = None
     default_judgment_likely: bool | None = None
 
+    # v2 dataset features. These mirror dataset.csv so training and API inference
+    # can share one preprocessing path.
+    user_is_plaintiff: bool | None = None
+    user_has_attorney: bool | None = None
+    opposing_party_has_attorney: bool | None = None
+    opposing_party_filed_response_documents: bool | None = None
+    has_photos_or_physical_evidence: bool | None = None
+    has_receipts_or_financial_records: bool | None = None
+    has_written_communications: bool | None = None
+    has_witness_statements: bool | None = None
+    has_signed_contract_attached: bool | None = None
+    has_repair_or_replacement_estimate: bool | None = None
+    has_police_report: bool | None = None
+    has_medical_records: bool | None = None
+    has_expert_assessment: bool | None = None
+    has_invoices_or_billing_records: bool | None = None
+    argument_cites_specific_dates: bool | None = None
+    argument_cites_specific_dollar_amounts: bool | None = None
+    argument_cites_contract_or_document: bool | None = None
+    argument_has_chronological_timeline: bool | None = None
+    argument_names_specific_witnesses: bool | None = None
+    argument_quantifies_each_damage_component: bool | None = None
+    argument_cites_statute_or_legal_basis: bool | None = None
+    argument_identifies_specific_location: bool | None = None
+    sent_written_demand_letter: bool | None = None
+    sent_certified_mail: bool | None = None
+    gave_opportunity_to_cure: bool | None = None
+    attempted_mediation: bool | None = None
+    contract_is_written: bool | None = None
+    contract_is_signed_by_both_parties: bool | None = None
+    contract_specifies_deadline_or_term: bool | None = None
+    contract_specifies_payment_amount: bool | None = None
+    damages_include_out_of_pocket_costs: bool | None = None
+    damages_include_lost_wages: bool | None = None
+    damages_include_property_value_loss: bool | None = None
+    damages_are_ongoing: bool | None = None
+    damages_have_third_party_valuation: bool | None = None
+    claim_amount_stated_in_dollars: bool | None = None
+    claim_amount_is_within_small_claims_limit: bool | None = None
+    user_seeks_interest: bool | None = None
+    user_seeks_court_costs: bool | None = None
+
 
 class FeatureVector(BaseModel):
     """Unified feature vector combining LLM-extracted features and case metadata.
@@ -50,6 +92,47 @@ class FeatureVector(BaseModel):
     legal_representation_defendant: bool | None = None
     counterclaim_present: bool | None = None
     default_judgment_likely: bool | None = None
+
+    # v2 dataset features
+    user_is_plaintiff: bool | None = None
+    user_has_attorney: bool | None = None
+    opposing_party_has_attorney: bool | None = None
+    opposing_party_filed_response_documents: bool | None = None
+    has_photos_or_physical_evidence: bool | None = None
+    has_receipts_or_financial_records: bool | None = None
+    has_written_communications: bool | None = None
+    has_witness_statements: bool | None = None
+    has_signed_contract_attached: bool | None = None
+    has_repair_or_replacement_estimate: bool | None = None
+    has_police_report: bool | None = None
+    has_medical_records: bool | None = None
+    has_expert_assessment: bool | None = None
+    has_invoices_or_billing_records: bool | None = None
+    argument_cites_specific_dates: bool | None = None
+    argument_cites_specific_dollar_amounts: bool | None = None
+    argument_cites_contract_or_document: bool | None = None
+    argument_has_chronological_timeline: bool | None = None
+    argument_names_specific_witnesses: bool | None = None
+    argument_quantifies_each_damage_component: bool | None = None
+    argument_cites_statute_or_legal_basis: bool | None = None
+    argument_identifies_specific_location: bool | None = None
+    sent_written_demand_letter: bool | None = None
+    sent_certified_mail: bool | None = None
+    gave_opportunity_to_cure: bool | None = None
+    attempted_mediation: bool | None = None
+    contract_is_written: bool | None = None
+    contract_is_signed_by_both_parties: bool | None = None
+    contract_specifies_deadline_or_term: bool | None = None
+    contract_specifies_payment_amount: bool | None = None
+    damages_include_out_of_pocket_costs: bool | None = None
+    damages_include_lost_wages: bool | None = None
+    damages_include_property_value_loss: bool | None = None
+    damages_are_ongoing: bool | None = None
+    damages_have_third_party_valuation: bool | None = None
+    claim_amount_stated_in_dollars: bool | None = None
+    claim_amount_is_within_small_claims_limit: bool | None = None
+    user_seeks_interest: bool | None = None
+    user_seeks_court_costs: bool | None = None
 
     # Metadata-derived features
     plaintiff_count: int = 0

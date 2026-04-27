@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870635",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 12500.0,
+  "amount_awarded_costs": 0.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": true,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": false,
+  "judgment_date": "2026-02-25",
+  "outcome_summary": "The court affirmed the judgment in favor of Jaykishan Bhatia and Shashank Bhatia against Gurnish Anand for $12,500."
+}

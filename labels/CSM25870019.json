@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870019",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 738.64,
+  "amount_awarded_costs": 45.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": false,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": false,
+  "judgment_date": "2025-07-24",
+  "outcome_summary": "The court ruled in favor of the plaintiff, James Le, awarding him $738.64 in principal and $45.00 in costs."
+}

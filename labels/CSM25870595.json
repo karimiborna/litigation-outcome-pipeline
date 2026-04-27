@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870595",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 8500.0,
+  "amount_awarded_costs": 90.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": null,
+  "has_attorney_plaintiff": null,
+  "has_attorney_defendant": null,
+  "judgment_date": "2025-12-04",
+  "outcome_summary": "The court ruled in favor of the plaintiff, Javier Fierro, awarding him $8,500 in principal and $90 in costs."
+}

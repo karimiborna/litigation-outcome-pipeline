@@ -1,0 +1,13 @@
+{
+  "case_number": "CSM25870163",
+  "outcome": "plaintiff_win",
+  "dismissal_type": null,
+  "amount_awarded_principal": 5996.0,
+  "amount_awarded_costs": 130.0,
+  "amount_awarded_interest": 0.0,
+  "defendant_appeared": true,
+  "has_attorney_plaintiff": false,
+  "has_attorney_defendant": true,
+  "judgment_date": "2025-11-14",
+  "outcome_summary": "The court ruled in favor of Hugo Louis Seize, awarding him a total of $6,196 against State Farm Mutual Automobile Insurance Company."
+}

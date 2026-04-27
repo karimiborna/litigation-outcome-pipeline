@@ -21,7 +21,7 @@ Filing Date: {filing_date}
 {case_text}
 --- END CASE TEXT ---
 
-Extract the following features as JSON:
+Extract the following features as JSON. These names must match exactly:
 
 {{
     "evidence_strength": <1-5 integer, 1=very weak, 5=very strong, null if unclear>,
@@ -40,7 +40,47 @@ Extract the following features as JSON:
     "legal_representation_plaintiff": <true/false — whether plaintiff has an attorney>,
     "legal_representation_defendant": <true/false — whether defendant has an attorney>,
     "counterclaim_present": <true/false — whether the defendant filed a counterclaim>,
-    "default_judgment_likely": <true/false — whether defendant appears absent/non-responsive>
+    "default_judgment_likely": <true/false — whether defendant appears absent/non-responsive>,
+
+    "user_is_plaintiff": <true/false — whether the input case is from plaintiff perspective>,
+    "user_has_attorney": <true/false — whether the filing party has an attorney>,
+    "opposing_party_has_attorney": <true/false/null>,
+    "opposing_party_filed_response_documents": <true/false/null>,
+    "has_photos_or_physical_evidence": <true/false>,
+    "has_receipts_or_financial_records": <true/false>,
+    "has_written_communications": <true/false>,
+    "has_witness_statements": <true/false>,
+    "has_signed_contract_attached": <true/false/null>,
+    "has_repair_or_replacement_estimate": <true/false>,
+    "has_police_report": <true/false>,
+    "has_medical_records": <true/false>,
+    "has_expert_assessment": <true/false>,
+    "has_invoices_or_billing_records": <true/false>,
+    "argument_cites_specific_dates": <true/false>,
+    "argument_cites_specific_dollar_amounts": <true/false>,
+    "argument_cites_contract_or_document": <true/false>,
+    "argument_has_chronological_timeline": <true/false>,
+    "argument_names_specific_witnesses": <true/false>,
+    "argument_quantifies_each_damage_component": <true/false>,
+    "argument_cites_statute_or_legal_basis": <true/false>,
+    "argument_identifies_specific_location": <true/false>,
+    "sent_written_demand_letter": <true/false/null>,
+    "sent_certified_mail": <true/false/null>,
+    "gave_opportunity_to_cure": <true/false/null>,
+    "attempted_mediation": <true/false/null>,
+    "contract_is_written": <true/false/null>,
+    "contract_is_signed_by_both_parties": <true/false/null>,
+    "contract_specifies_deadline_or_term": <true/false/null>,
+    "contract_specifies_payment_amount": <true/false/null>,
+    "damages_include_out_of_pocket_costs": <true/false/null>,
+    "damages_include_lost_wages": <true/false/null>,
+    "damages_include_property_value_loss": <true/false/null>,
+    "damages_are_ongoing": <true/false/null>,
+    "damages_have_third_party_valuation": <true/false/null>,
+    "claim_amount_stated_in_dollars": <true/false>,
+    "claim_amount_is_within_small_claims_limit": <true/false/null>,
+    "user_seeks_interest": <true/false/null>,
+    "user_seeks_court_costs": <true/false/null>
 }}
 
 Respond with ONLY the JSON object."""
