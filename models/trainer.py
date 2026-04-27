@@ -99,9 +99,7 @@ class ClassifierTrainer:
 
             log_metrics(metrics)
 
-            importances = dict(
-                zip(features.columns, self._model.feature_importances_)
-            )
+            importances = dict(zip(features.columns, self._model.feature_importances_))
             top_features = sorted(importances.items(), key=lambda x: x[1], reverse=True)[:10]
             for feat_name, importance in top_features:
                 mlflow.log_metric(f"importance_{feat_name}", importance)
@@ -181,9 +179,7 @@ class RegressorTrainer:
 
             log_metrics(metrics)
 
-            importances = dict(
-                zip(features.columns, self._model.feature_importances_)
-            )
+            importances = dict(zip(features.columns, self._model.feature_importances_))
             top_features = sorted(importances.items(), key=lambda x: x[1], reverse=True)[:10]
             for feat_name, importance in top_features:
                 mlflow.log_metric(f"importance_{feat_name}", importance)

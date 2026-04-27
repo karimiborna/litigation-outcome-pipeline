@@ -56,9 +56,7 @@ RAW_MODEL_FEATURE_COLUMNS = (
 )
 
 MODEL_FEATURE_COLUMNS = tuple(
-    c
-    for c in RAW_MODEL_FEATURE_COLUMNS
-    if c != "feat_claim_category"
+    c for c in RAW_MODEL_FEATURE_COLUMNS if c != "feat_claim_category"
 ) + tuple(f"feat_claim_category_{c}" for c in CLAIM_CATEGORIES)
 
 
@@ -214,11 +212,7 @@ def feature_vector_to_raw_row(vector: FeatureVector) -> dict[str, Any]:
 def feature_vector_to_model_frame(vector: FeatureVector) -> pd.DataFrame:
     """Convert one API feature vector to a validated model matrix row."""
     raw = pd.DataFrame([feature_vector_to_raw_row(vector)])
-    missing_values = [
-        col
-        for col in RAW_MODEL_FEATURE_COLUMNS
-        if raw[col].isna().any()
-    ]
+    missing_values = [col for col in RAW_MODEL_FEATURE_COLUMNS if raw[col].isna().any()]
     if missing_values:
         raise ValueError(f"Missing required inference features: {missing_values}")
 

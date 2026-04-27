@@ -9,8 +9,8 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from api.dependencies import app_state
 from api.schemas import (
@@ -89,12 +89,12 @@ async def root() -> RootResponse:
 async def lexratio_ui():
     """Serve the LexRatio UI."""
     from fastapi.responses import FileResponse
+
     static_dir = Path(__file__).parent / "static"
     lexratio_file = static_dir / "lexratio.html"
     if not lexratio_file.exists():
         raise HTTPException(status_code=404, detail="LexRatio UI not available")
     return FileResponse(lexratio_file, media_type="text/html")
-
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -252,7 +252,9 @@ async def analyze_lexratio(request: LexRatioAnalysisRequest) -> LexRatioAnalysis
     weaknesses = _generate_weaknesses(signals, prediction.win_probability)
 
     # Generate verdict summary
-    verdict = _generate_verdict_summary(prediction.win_probability, prediction.expected_monetary_outcome)
+    verdict = _generate_verdict_summary(
+        prediction.win_probability, prediction.expected_monetary_outcome
+    )
 
     # Generate advice
     advice = _generate_advice(signals, prediction.win_probability, strengths, weaknesses)
@@ -267,7 +269,6 @@ async def analyze_lexratio(request: LexRatioAnalysisRequest) -> LexRatioAnalysis
         advice=advice,
         signals=signals,
     )
-
 
 
 def _build_processed_case(request: PredictionRequest) -> ProcessedCase:
@@ -321,7 +322,16 @@ def _run_prediction_sync(vector: FeatureVector, case_number: str | None) -> Pred
 
 def _detect_written_evidence(text: str) -> bool | None:
     """Check for mentions of written evidence."""
-    keywords = ["contract", "receipt", "email", "text message", "invoice", "letter", "document", "agreement"]
+    keywords = [
+        "contract",
+        "receipt",
+        "email",
+        "text message",
+        "invoice",
+        "letter",
+        "document",
+        "agreement",
+    ]
     return any(kw in text for kw in keywords) if text else None
 
 
@@ -339,7 +349,14 @@ def _detect_contract(text: str) -> bool | None:
 
 def _detect_defendant_response(text: str) -> bool | None:
     """Check for defendant response."""
-    keywords = ["defendant respond", "defendant said", "they admitted", "they denied", "defendant claim", "in response"]
+    keywords = [
+        "defendant respond",
+        "defendant said",
+        "they admitted",
+        "they denied",
+        "defendant claim",
+        "in response",
+    ]
     return any(kw in text for kw in keywords) if text else None
 
 
@@ -418,22 +435,33 @@ def _generate_verdict_summary(win_prob: float, expected_award: float) -> str:
     return f"Claimant is {outcome} {award_str}.".strip()
 
 
-def _generate_advice(signals: LexRatioSignals, win_prob: float, strengths: list[str], weaknesses: list[str]) -> str:
+def _generate_advice(
+    signals: LexRatioSignals, win_prob: float, strengths: list[str], weaknesses: list[str]
+) -> str:
     """Generate counsel advice."""
     advice_parts = []
 
     if win_prob >= 0.65:
-        advice_parts.append("Case presents favorable prospects. Focus on presenting evidence clearly and concisely at hearing.")
+        advice_parts.append(
+            "Case presents favorable prospects. Focus on presenting evidence clearly and concisely at hearing."
+        )
     elif win_prob >= 0.4:
-        advice_parts.append("Case has merit but requires strong presentation. Organize evidence logically and address potential counterarguments.")
+        advice_parts.append(
+            "Case has merit but requires strong presentation. Organize evidence logically and address potential counterarguments."
+        )
     else:
-        advice_parts.append("Consider settlement discussions given case weaknesses. If proceeding, emphasize strongest points and address gaps in evidence.")
+        advice_parts.append(
+            "Consider settlement discussions given case weaknesses. If proceeding, emphasize strongest points and address gaps in evidence."
+        )
 
     if not signals.sent_demand_letter:
-        advice_parts.append("Consider whether prior demand letter would have strengthened negotiating position.")
+        advice_parts.append(
+            "Consider whether prior demand letter would have strengthened negotiating position."
+        )
 
     if not signals.damages_itemized:
-        advice_parts.append("Clearly itemize all damages with supporting receipts and documentation.")
+        advice_parts.append(
+            "Clearly itemize all damages with supporting receipts and documentation."
+        )
 
     return " ".join(advice_parts)
-
