@@ -74,7 +74,7 @@ class TestFeatureVector:
         )
         inputs = v.to_model_input()
         assert inputs["feat_user_is_plaintiff"] == 1.0
-        assert inputs["feat_contract_present"] == 1.0
+        assert inputs["contract_present"] == 1.0
         assert inputs["feat_monetary_amount_claimed"] == 5000.0
         assert inputs["feat_has_photos_or_physical_evidence"] == 1.0
         assert inputs["feat_argument_cites_specific_dates"] == 1.0
@@ -85,7 +85,7 @@ class TestFeatureVector:
     def test_null_features_use_sentinel(self):
         v = FeatureVector(case_number="SC26001")
         inputs = v.to_model_input()
-        assert inputs["feat_contract_present"] == -1.0
+        assert inputs["contract_present"] == -1.0
         assert inputs["feat_has_photos_or_physical_evidence"] == -1.0
         assert inputs["feat_argument_cites_specific_dates"] == -1.0
         assert inputs["feat_user_is_plaintiff"] == -1.0
