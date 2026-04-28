@@ -469,17 +469,17 @@ def _generate_advice(
 
     if win_prob >= 0.65:
         advice_parts.append(
-            "Case presents favorable prospects. Focus on presenting" \
+            "Case presents favorable prospects. Focus on presenting"
             "evidence clearly and concisely at hearing."
         )
     elif win_prob >= 0.4:
         advice_parts.append(
-            "Case has merit but requires strong presentation. Organize evidence" \
+            "Case has merit but requires strong presentation. Organize evidence"
             "logically and address potential counterarguments."
         )
     else:
         advice_parts.append(
-            "Consider settlement discussions given case weaknesses. If proceeding," \
+            "Consider settlement discussions given case weaknesses. If proceeding,"
             "emphasize strongest points and address gaps in evidence."
         )
 
