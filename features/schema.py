@@ -235,7 +235,9 @@ class FeatureVector(BaseModel):
             "feat_has_receipts_or_financial_records": _bool(self.has_receipts_or_financial_records),
             "feat_has_written_communications": _bool(self.has_written_communications),
             "feat_has_witness_statements": _bool(self.has_witness_statements),
-            "feat_has_repair_or_replacement_estimate": _bool(self.has_repair_or_replacement_estimate),
+            "feat_has_repair_or_replacement_estimate": _bool(
+                self.has_repair_or_replacement_estimate
+            ),
             "feat_has_police_report": _bool(self.has_police_report),
             "feat_has_medical_records": _bool(self.has_medical_records),
             "feat_has_expert_assessment": _bool(self.has_expert_assessment),
@@ -244,8 +246,12 @@ class FeatureVector(BaseModel):
             "feat_argument_cites_specific_dollar_amounts": _bool(
                 self.argument_cites_specific_dollar_amounts
             ),
-            "feat_argument_cites_contract_or_document": _bool(self.argument_cites_contract_or_document),
-            "feat_argument_has_chronological_timeline": _bool(self.argument_has_chronological_timeline),
+            "feat_argument_cites_contract_or_document": _bool(
+                self.argument_cites_contract_or_document
+            ),
+            "feat_argument_has_chronological_timeline": _bool(
+                self.argument_has_chronological_timeline
+            ),
             "feat_argument_names_specific_witnesses": _bool(self.argument_names_specific_witnesses),
             "feat_argument_quantifies_each_damage_component": _bool(
                 self.argument_quantifies_each_damage_component
@@ -262,11 +268,14 @@ class FeatureVector(BaseModel):
             "feat_witness_count": _int(self.witness_count),
             "feat_text_length": float(self.text_length),
             "feat_document_count": float(self.document_count),
-            "feat_claim_category_breach_of_contract": _bool(self.claim_category=="breach of contract"),
-            "feat_claim_category_fraud": _bool(self.claim_category=="fraud"),
-            "feat_claim_category_other": _bool(self.claim_category=="other"),
-            "feat_claim_category_personal_injury": _bool(self.claim_category=="personal injury"),
-            "feat_claim_category_property_damage": _bool(self.claim_category=="property damage"),
-            "feat_claim_category_security_deposit": _bool(self.claim_category=="security depost"),
-            "feat_claim_category_service_dispute": _bool(self.claim_category=="service dispute"),
-            "feat_claim_category_unpaid_debt": _bool(self.claim_category=="unpaid debt")}
+            "feat_claim_category_breach_of_contract": _bool(
+                self.claim_category == "breach of contract"
+            ),
+            "feat_claim_category_fraud": _bool(self.claim_category == "fraud"),
+            "feat_claim_category_other": _bool(self.claim_category == "other"),
+            "feat_claim_category_personal_injury": _bool(self.claim_category == "personal injury"),
+            "feat_claim_category_property_damage": _bool(self.claim_category == "property damage"),
+            "feat_claim_category_security_deposit": _bool(self.claim_category == "security depost"),
+            "feat_claim_category_service_dispute": _bool(self.claim_category == "service dispute"),
+            "feat_claim_category_unpaid_debt": _bool(self.claim_category == "unpaid debt"),
+        }

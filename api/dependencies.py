@@ -9,7 +9,7 @@ from counterfactual.analyzer import CounterfactualAnalyzer
 from features.config import FeaturesConfig
 from features.extraction import FeatureExtractor
 from models.config import MLflowConfig
-from models.tracking import load_production_model, init_mlflow
+from models.tracking import init_mlflow, load_production_model
 from retrieval.config import RetrievalConfig
 from retrieval.index import CaseIndex
 
@@ -29,7 +29,7 @@ class AppState:
         self.models_loaded: bool = False
         self.classifier_loaded: bool = False
         self.regressor_loaded: bool = False
-        
+
         # Initialize MLflow connection on startup
         try:
             init_mlflow(self.mlflow_config)
@@ -40,7 +40,7 @@ class AppState:
     def load_models(self, mlflow_config: MLflowConfig | None = None) -> None:
         """Load production models from MLflow registry."""
         import threading
-        
+
         config = mlflow_config or self.mlflow_config
         self.classifier_loaded = False
         self.regressor_loaded = False
@@ -68,10 +68,10 @@ class AppState:
         # Load models in parallel with timeout
         classifier_thread = threading.Thread(target=load_classifier_task, daemon=True)
         regressor_thread = threading.Thread(target=load_regressor_task, daemon=True)
-        
+
         classifier_thread.start()
         regressor_thread.start()
-        
+
         # Wait maximum 30 seconds for both to finish
         classifier_thread.join(timeout=30)
         regressor_thread.join(timeout=30)
@@ -79,7 +79,9 @@ class AppState:
         if self.classifier_loaded and self.regressor_loaded:
             self.counterfactual_analyzer = CounterfactualAnalyzer(self.classifier, self.regressor)
             self.models_loaded = True
-            logger.info("Production classifier and regressor ready (MLflow: %s)", config.tracking_uri)
+            logger.info(
+                "Production classifier and regressor ready (MLflow: %s)", config.tracking_uri
+            )
         else:
             if not self.classifier_loaded:
                 logger.warning("Classifier not loaded — predictions will fail")
@@ -88,7 +90,7 @@ class AppState:
 
     def load_feature_extractor(self, config: FeaturesConfig | None = None) -> None:
         import threading
-        
+
         def load_task():
             try:
                 self.feature_extractor = FeatureExtractor(config or FeaturesConfig())
@@ -104,7 +106,7 @@ class AppState:
         thread = threading.Thread(target=load_task, daemon=True)
         thread.start()
         thread.join(timeout=15)
-        
+
         if self.feature_extractor is None:
             logger.warning("Feature extractor not ready — feature extraction will fail")
 

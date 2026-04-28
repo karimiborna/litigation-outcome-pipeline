@@ -9,6 +9,7 @@ from pathlib import Path
 # Optional import for FAISS
 try:
     import faiss
+
     FAISS_AVAILABLE = True
 except ImportError:
     FAISS_AVAILABLE = False
@@ -87,7 +88,7 @@ class CaseIndex:
             self._index: None = None
             self._metadata = CaseMetadataStore()
             return
-        
+
         self._config = config or RetrievalConfig()
         self._embedding_model = EmbeddingModel(config)
         self._index: faiss.IndexFlatIP | None = None
