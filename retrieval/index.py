@@ -6,7 +6,14 @@ import json
 import logging
 from pathlib import Path
 
-import faiss
+# Optional import for FAISS
+try:
+    import faiss
+    FAISS_AVAILABLE = True
+except ImportError:
+    FAISS_AVAILABLE = False
+    faiss = None
+
 import numpy as np
 
 from retrieval.config import RetrievalConfig
@@ -73,6 +80,14 @@ class CaseIndex:
     """FAISS vector index for finding similar historical cases."""
 
     def __init__(self, config: RetrievalConfig | None = None):
+        if not FAISS_AVAILABLE:
+            logger.warning("FAISS not available — case index will not work")
+            self._config = config or RetrievalConfig()
+            self._embedding_model = None
+            self._index: None = None
+            self._metadata = CaseMetadataStore()
+            return
+        
         self._config = config or RetrievalConfig()
         self._embedding_model = EmbeddingModel(config)
         self._index: faiss.IndexFlatIP | None = None

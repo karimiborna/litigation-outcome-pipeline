@@ -54,15 +54,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add CORS middleware to allow frontend requests from Vercel and localhost
+# Add CORS middleware to allow frontend requests from everywhere (development friendly)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:8000",
+        "http://localhost:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8000",
+        "http://127.0.0.1:5173",
         "https://*.vercel.app",
+        "*",  # Allow all origins in development
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -76,24 +79,50 @@ if static_dir.exists():
     logger.info("Static files mounted from %s", static_dir)
 
 
-@app.get("/", response_model=RootResponse)
-async def root() -> RootResponse:
+@app.get("/api/", response_model=RootResponse)
+async def api_root() -> RootResponse:
+    """API root endpoint — returns JSON."""
     return RootResponse(
         message="Welcome to the Litigation Outcome Predictor API.",
         service="litigation-outcome-pipeline",
+        docs="/docs"
+    )
+
+
+@app.get("/")
+async def root():
+    """Serve the LexRatio UI as the homepage."""
+    from fastapi.responses import FileResponse
+    # Try root directory first, then static
+    root_dir = Path(__file__).parent.parent
+    lexratio_file = root_dir / "lexratio.html"
+    if not lexratio_file.exists():
+        static_dir = Path(__file__).parent / "static"
+        lexratio_file = static_dir / "lexratio.html"
+    
+    if lexratio_file.exists():
+        return FileResponse(lexratio_file, media_type="text/html")
+    
+    # Fallback to JSON if HTML not found
+    return RootResponse(
+        message="Welcome to the Litigation Outcome Predictor API.",
+        service="litigation-outcome-pipeline",
+        docs="/docs"
     )
 
 
 @app.get("/lexratio")
 async def lexratio_ui():
-    """Serve the LexRatio UI."""
+    """Serve the LexRatio UI (also available at root path)."""
     from fastapi.responses import FileResponse
-    static_dir = Path(__file__).parent / "static"
-    lexratio_file = static_dir / "lexratio.html"
+    root_dir = Path(__file__).parent.parent
+    lexratio_file = root_dir / "lexratio.html"
+    if not lexratio_file.exists():
+        static_dir = Path(__file__).parent / "static"
+        lexratio_file = static_dir / "lexratio.html"
     if not lexratio_file.exists():
         raise HTTPException(status_code=404, detail="LexRatio UI not available")
     return FileResponse(lexratio_file, media_type="text/html")
-
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -295,6 +324,7 @@ def _run_prediction_sync(vector: FeatureVector, case_number: str | None) -> Pred
     import pandas as pd
 
     model_input = pd.DataFrame([vector.to_model_input()])
+
     win_prob = float(app_state.classifier.predict_proba(model_input)[0, 1])
     monetary = float(app_state.regressor.predict(model_input)[0])
 

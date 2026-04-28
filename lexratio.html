@@ -237,28 +237,7 @@ async function analyze() {
   document.getElementById('btn-spin').style.display = 'inline-block';
   document.getElementById('result-area').innerHTML = '';
 
-  var sys = `You are an expert small claims court advisor. Analyse the case and return ONLY valid JSON, no markdown, no prose.
-
-Return exactly:
-{
-  "win_probability": <integer 0-100, likelihood the claimant prevails>,
-  "expected_award": <number, expected monetary award>,
-  "confidence": <"high"|"medium"|"low">,
-  "verdict_summary": <one plain-English sentence predicting the likely outcome>,
-  "strengths": [<2-4 specific positive factors supporting the claim>],
-  "weaknesses": [<2-4 specific risks or gaps in the case>],
-  "advice": <2-3 sentences of concrete hearing advice>,
-  "signals": {
-    "has_written_evidence": <true|false|null>,
-    "sent_demand_letter": <true|false|null>,
-    "has_contract": <true|false|null>,
-    "defendant_responded": <true|false|null>,
-    "has_witnesses": <true|false|null>,
-    "damages_itemized": <true|false|null>
-  }
-}`;
-
-  var msg = [
+  var case_text = [
     cat ? 'Case type: ' + cat : '',
     amount ? 'Amount in dispute: $' + amount : '',
     'Facts: ' + narrative,
@@ -266,27 +245,31 @@ Return exactly:
     steps ? 'Prior steps: ' + steps : ''
   ].filter(Boolean).join('\n');
 
+  // Determine API URL
+  var apiUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+    ? 'http://localhost:8000/api/analyze-lexratio'
+    : window.location.origin + '/api/analyze-lexratio';
+
   try {
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    var resp = await fetch(apiUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        // Add your Anthropic API key here:
-        // 'x-api-key': 'YOUR_API_KEY_HERE',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: sys,
-        messages: [{ role: 'user', content: msg }]
+        case_text: case_text,
+        case_title: narrative.substring(0, 100),
+        cause_of_action: cat || 'other',
+        claim_amount: parseFloat(amount) || 0
       })
     });
+
+    if (!resp.ok) {
+      throw new Error('API returned status ' + resp.status + ': ' + resp.statusText);
+    }
+
     var data = await resp.json();
-    var raw = data.content.map(function(c){ return c.text || ''; }).join('');
-    var r = JSON.parse(raw.replace(/```json|```/g, '').trim());
-    renderResult(r, amount);
+    renderResult(data, amount);
   } catch(e) {
     document.getElementById('result-area').innerHTML =
       '<div class="error-entry">Analysis failed — ' + e.message + '. Please try again.</div>';
@@ -298,9 +281,10 @@ Return exactly:
 }
 
 function renderResult(r, amount) {
-  var wp     = Math.round(r.win_probability || 0);
+  // Handle both integer and float win_probability from backend
+  var wp = typeof r.win_probability === 'number' ? Math.round(r.win_probability) : Math.round((r.win_probability_float || 0) * 100);
   var award  = r.expected_award || 0;
-  var conf   = r.confidence || 'medium';
+  var conf   = (r.confidence || 'medium').toLowerCase();
   var amtNum = parseFloat(amount) || 0;
   var recovery = (amtNum > 0 && award > 0) ? Math.round((award / amtNum) * 100) + '%' : '—';
   var awardStr = award > 0 ? '$' + Math.round(award).toLocaleString() : '—';

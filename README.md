@@ -598,7 +598,7 @@ mypy scraper/ data/ features/ models/ api/ retrieval/ counterfactual/ --ignore-m
 | ML Models | scikit-learn (GradientBoosting) |
 | Experiment Tracking | MLflow |
 | Feature Extraction | OpenAI API (gpt-4o-mini) |
-| PDF Text Extraction | PyMuPDF + NVIDIA Vision API (Llama 3.2 90B) / Qwen2-VL-7B on Colab GPU |
+| PDF Text Extraction | PyMuPDF + NVIDIA Vision API (Llama 3.2 90B) / Qwen2-VL-7B on Colab GPU |f
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
 | Vector Search | FAISS |
 | API | FastAPI + Uvicorn |
