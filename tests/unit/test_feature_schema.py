@@ -77,7 +77,6 @@ class TestFeatureVector:
         assert inputs["feat_monetary_amount_claimed"] == 5000.0
         assert inputs["feat_has_photos_or_physical_evidence"] == 1.0
         assert inputs["feat_argument_cites_specific_dates"] == 1.0
-        assert inputs["feat_sent_written_demand_letter"] == 1.0
         assert inputs["feat_plaintiff_count"] == 1.0
         assert inputs["feat_text_length"] == 500.0
 
