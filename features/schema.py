@@ -227,77 +227,55 @@ class FeatureVector(BaseModel):
             return v
 
         return {
-            # User-side indicator
-            "user_is_plaintiff": _bool(self.user_is_plaintiff),
-            # Missingness flag
-            "missing_features": _bool(self.missing_features),
-            # Amount
-            "monetary_amount_claimed": _float(self.monetary_amount_claimed),
-            # Representation
-            "user_has_attorney": _bool(self.user_has_attorney),
-            "opposing_party_has_attorney": _bool(self.opposing_party_has_attorney),
-            "opposing_party_filed_response_documents": _bool(
-                self.opposing_party_filed_response_documents
+            "feat_user_is_plaintiff": _bool(self.user_is_plaintiff),
+            "feat_monetary_amount_claimed": _float(self.monetary_amount_claimed),
+            "feat_user_has_attorney": _bool(self.user_has_attorney),
+            "feat_counterclaim_present": _bool(self.counterclaim_present),
+            "feat_has_photos_or_physical_evidence": _bool(self.has_photos_or_physical_evidence),
+            "feat_has_receipts_or_financial_records": _bool(self.has_receipts_or_financial_records),
+            "feat_has_written_communications": _bool(self.has_written_communications),
+            "feat_has_witness_statements": _bool(self.has_witness_statements),
+            "feat_has_repair_or_replacement_estimate": _bool(
+                self.has_repair_or_replacement_estimate
             ),
-            # Counter-filings / contract presence
-            "counterclaim_present": _bool(self.counterclaim_present),
-            "contract_present": _bool(self.contract_present),
-            # Evidence
-            "has_photos_or_physical_evidence": _bool(self.has_photos_or_physical_evidence),
-            "has_receipts_or_financial_records": _bool(self.has_receipts_or_financial_records),
-            "has_written_communications": _bool(self.has_written_communications),
-            "has_witness_statements": _bool(self.has_witness_statements),
-            "has_signed_contract_attached": _bool(self.has_signed_contract_attached),
-            "has_repair_or_replacement_estimate": _bool(self.has_repair_or_replacement_estimate),
-            "has_police_report": _bool(self.has_police_report),
-            "has_medical_records": _bool(self.has_medical_records),
-            "has_expert_assessment": _bool(self.has_expert_assessment),
-            "has_invoices_or_billing_records": _bool(self.has_invoices_or_billing_records),
-            # Argument content
-            "argument_cites_specific_dates": _bool(self.argument_cites_specific_dates),
-            "argument_cites_specific_dollar_amounts": _bool(
+            "feat_has_police_report": _bool(self.has_police_report),
+            "feat_has_medical_records": _bool(self.has_medical_records),
+            "feat_has_expert_assessment": _bool(self.has_expert_assessment),
+            "feat_has_invoices_or_billing_records": _bool(self.has_invoices_or_billing_records),
+            "feat_argument_cites_specific_dates": _bool(self.argument_cites_specific_dates),
+            "feat_argument_cites_specific_dollar_amounts": _bool(
                 self.argument_cites_specific_dollar_amounts
             ),
-            "argument_cites_contract_or_document": _bool(self.argument_cites_contract_or_document),
-            "argument_has_chronological_timeline": _bool(self.argument_has_chronological_timeline),
-            "argument_names_specific_witnesses": _bool(self.argument_names_specific_witnesses),
-            "argument_quantifies_each_damage_component": _bool(
+            "feat_argument_cites_contract_or_document": _bool(
+                self.argument_cites_contract_or_document
+            ),
+            "feat_argument_has_chronological_timeline": _bool(
+                self.argument_has_chronological_timeline
+            ),
+            "feat_argument_names_specific_witnesses": _bool(self.argument_names_specific_witnesses),
+            "feat_argument_quantifies_each_damage_component": _bool(
                 self.argument_quantifies_each_damage_component
             ),
-            "argument_cites_statute_or_legal_basis": _bool(
+            "feat_argument_cites_statute_or_legal_basis": _bool(
                 self.argument_cites_statute_or_legal_basis
             ),
-            "argument_identifies_specific_location": _bool(
+            "feat_argument_identifies_specific_location": _bool(
                 self.argument_identifies_specific_location
             ),
-            # Procedural
-            "sent_written_demand_letter": _bool(self.sent_written_demand_letter),
-            "sent_certified_mail": _bool(self.sent_certified_mail),
-            "gave_opportunity_to_cure": _bool(self.gave_opportunity_to_cure),
-            "attempted_mediation": _bool(self.attempted_mediation),
-            # Contract detail
-            "contract_is_written": _bool(self.contract_is_written),
-            "contract_is_signed_by_both_parties": _bool(self.contract_is_signed_by_both_parties),
-            "contract_specifies_deadline_or_term": _bool(self.contract_specifies_deadline_or_term),
-            "contract_specifies_payment_amount": _bool(self.contract_specifies_payment_amount),
-            # Damages
-            "damages_include_out_of_pocket_costs": _bool(self.damages_include_out_of_pocket_costs),
-            "damages_include_lost_wages": _bool(self.damages_include_lost_wages),
-            "damages_include_property_value_loss": _bool(self.damages_include_property_value_loss),
-            "damages_are_ongoing": _bool(self.damages_are_ongoing),
-            "damages_have_third_party_valuation": _bool(self.damages_have_third_party_valuation),
-            # Jurisdictional
-            "claim_amount_stated_in_dollars": _bool(self.claim_amount_stated_in_dollars),
-            "claim_amount_is_within_small_claims_limit": _bool(
-                self.claim_amount_is_within_small_claims_limit
+            "feat_claim_amount_stated_in_dollars": _bool(self.claim_amount_stated_in_dollars),
+            "feat_plaintiff_count": _int(self.plaintiff_count),
+            "feat_defendant_count": _int(self.defendant_count),
+            "feat_witness_count": _int(self.witness_count),
+            "feat_text_length": float(self.text_length),
+            "feat_document_count": float(self.document_count),
+            "feat_claim_category_breach_of_contract": _bool(
+                self.claim_category == "breach of contract"
             ),
-            "user_seeks_interest": _bool(self.user_seeks_interest),
-            "user_seeks_court_costs": _bool(self.user_seeks_court_costs),
-            # Counts
-            "plaintiff_count": _int(self.plaintiff_count),
-            "defendant_count": _int(self.defendant_count),
-            "witness_count": _int(self.witness_count),
-            # Derived
-            "text_length": float(self.text_length),
-            "document_count": float(self.document_count),
+            "feat_claim_category_fraud": _bool(self.claim_category == "fraud"),
+            "feat_claim_category_other": _bool(self.claim_category == "other"),
+            "feat_claim_category_personal_injury": _bool(self.claim_category == "personal injury"),
+            "feat_claim_category_property_damage": _bool(self.claim_category == "property damage"),
+            "feat_claim_category_security_deposit": _bool(self.claim_category == "security depost"),
+            "feat_claim_category_service_dispute": _bool(self.claim_category == "service dispute"),
+            "feat_claim_category_unpaid_debt": _bool(self.claim_category == "unpaid debt"),
         }

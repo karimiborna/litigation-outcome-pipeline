@@ -9,7 +9,7 @@ from api.app import app
 
 def test_get_root() -> None:
     with TestClient(app) as client:
-        r = client.get("/")
+        r = client.get("/api/")
     assert r.status_code == 200
     body = r.json()
     assert "message" in body

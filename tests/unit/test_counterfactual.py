@@ -15,7 +15,7 @@ class FakeClassifier:
     """Fake classifier: higher win probability when written communications exist."""
 
     def predict_proba(self, x):
-        signal = x.iloc[0]["has_written_communications"]
+        signal = x.iloc[0]["feat_has_written_communications"]
         prob = 0.8 if signal >= 1.0 else 0.3
         return np.array([[1 - prob, prob]])
 
@@ -24,7 +24,7 @@ class FakeRegressor:
     """Fake regressor: monetary outcome proportional to claim amount."""
 
     def predict(self, x):
-        claimed = x.iloc[0]["monetary_amount_claimed"]
+        claimed = x.iloc[0]["feat_monetary_amount_claimed"]
         return np.array([claimed * 0.6 if claimed >= 0 else 1000.0])
 
 
@@ -58,9 +58,11 @@ def sample_vector():
 
 class TestCounterfactualAnalyzer:
     def test_explicit_perturbation(self, analyzer, sample_vector):
-        results = analyzer.analyze(sample_vector, perturbations={"has_written_communications": 1.0})
+        results = analyzer.analyze(
+            sample_vector, perturbations={"feat_has_written_communications": 1.0}
+        )
         assert len(results) == 1
-        assert results[0].feature_name == "has_written_communications"
+        assert results[0].feature_name == "feat_has_written_communications"
         assert results[0].new_value == 1.0
         assert results[0].win_prob_delta > 0
 
@@ -77,7 +79,7 @@ class TestCounterfactualAnalyzer:
 
     def test_result_to_dict(self):
         r = CounterfactualResult(
-            feature_name="has_written_communications",
+            feature_name="feat_has_written_communications",
             original_value=0.0,
             new_value=1.0,
             original_win_prob=0.3,
@@ -86,6 +88,6 @@ class TestCounterfactualAnalyzer:
             new_monetary=3000.0,
         )
         d = r.to_dict()
-        assert d["feature"] == "has_written_communications"
+        assert d["feature"] == "feat_has_written_communications"
         assert d["win_probability"]["delta"] == 0.5
         assert "increase" in d["description"]

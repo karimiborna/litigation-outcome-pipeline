@@ -73,24 +73,21 @@ class TestFeatureVector:
             document_count=2,
         )
         inputs = v.to_model_input()
-        assert inputs["user_is_plaintiff"] == 1.0
-        assert inputs["contract_present"] == 1.0
-        assert inputs["monetary_amount_claimed"] == 5000.0
-        assert inputs["has_photos_or_physical_evidence"] == 1.0
-        assert inputs["argument_cites_specific_dates"] == 1.0
-        assert inputs["sent_written_demand_letter"] == 1.0
-        assert inputs["plaintiff_count"] == 1.0
-        assert inputs["text_length"] == 500.0
+        assert inputs["feat_user_is_plaintiff"] == 1.0
+        assert inputs["feat_monetary_amount_claimed"] == 5000.0
+        assert inputs["feat_has_photos_or_physical_evidence"] == 1.0
+        assert inputs["feat_argument_cites_specific_dates"] == 1.0
+        assert inputs["feat_plaintiff_count"] == 1.0
+        assert inputs["feat_text_length"] == 500.0
 
     def test_null_features_use_sentinel(self):
         v = FeatureVector(case_number="SC26001")
         inputs = v.to_model_input()
-        assert inputs["contract_present"] == -1.0
-        assert inputs["has_photos_or_physical_evidence"] == -1.0
-        assert inputs["argument_cites_specific_dates"] == -1.0
-        assert inputs["user_is_plaintiff"] == -1.0
-        assert inputs["plaintiff_count"] == -1.0
-        assert inputs["witness_count"] == -1.0
+        assert inputs["feat_has_photos_or_physical_evidence"] == -1.0
+        assert inputs["feat_argument_cites_specific_dates"] == -1.0
+        assert inputs["feat_user_is_plaintiff"] == -1.0
+        assert inputs["feat_plaintiff_count"] == -1.0
+        assert inputs["feat_witness_count"] == -1.0
 
     def test_round_trip_json(self):
         v = FeatureVector(

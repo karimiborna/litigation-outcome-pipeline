@@ -266,7 +266,11 @@ async function analyze() {
   };
 
   try {
-    var apiUrl = window.API_URL || '/api/analyze-lexratio';
+    // Determine API URL based on hostname
+    var apiUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
+      ? 'http://localhost:8000/api/analyze-lexratio'
+      : window.location.origin + '/api/analyze-lexratio';
+    
     var resp = await fetch(apiUrl, {
       method: 'POST',
       headers: {
