@@ -22,7 +22,7 @@ cp .env.example .env
 
 ```bash
 export MLFLOW_TRACKING_URI=http://35.208.251.175:5000
-python scripts/train_classifier_real.py
+python scripts/train_models.py
 python scripts/promote_models_to_production.py
 ```
 
@@ -76,7 +76,7 @@ cd litigation-outcome-pipeline
 cp .env.example .env
 
 # train + register both API-required models from dataset.csv
-python scripts/train_classifier_real.py
+python scripts/train_models.py
 
 # promote latest registered version of each model to Production
 python scripts/promote_models_to_production.py
@@ -86,6 +86,6 @@ uvicorn api.app:app --host 0.0.0.0 --port 8000
 curl http://localhost:8000/health
 ```
 
-`scripts/train_classifier_real.py` registers `litigation-win-classifier` and `litigation-monetary-regressor` from `dataset.csv` using the shared `v2 feat_*` preprocessing in `models.dataset`. It logs the dataset SHA-256 hash and the feature column list as artifacts so each run is reproducible.
+`scripts/train_models.py` registers `litigation-win-classifier` and `litigation-monetary-regressor` from `dataset.csv` using the shared `v2 feat_*` preprocessing in `models.dataset`. It logs the dataset SHA-256 hash and the feature column list as artifacts so each run is reproducible.
 
 > **macOS note:** use `mlflow` or `python -m mlflow` (not `python3 -m mlflow`). On macOS, `python3` resolves to `/usr/bin/python3` (system Python 3.9, outside your conda env), which can have stale or broken mlflow installs. Inside `conda activate ML`, `python` is the conda interpreter — always use that.

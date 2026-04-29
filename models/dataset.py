@@ -53,6 +53,22 @@ RAW_MODEL_FEATURE_COLUMNS = (
     "feat_witness_count",
     "feat_text_length",
     "feat_document_count",
+    "feat_attempted_mediation",
+    "feat_claim_amount_is_within_small_claims_limit",
+    "feat_damages_are_ongoing",
+    "feat_damages_have_third_party_valuation",
+    "feat_damages_include_lost_wages",
+    "feat_damages_include_out_of_pocket_costs",
+    "feat_damages_include_property_value_loss",
+    "feat_gave_opportunity_to_cure",
+    "feat_has_signed_contract_attached",
+    "feat_opposing_party_filed_response_documents",
+    "feat_sent_certified_mail",
+    "feat_sent_written_demand_letter",
+    "feat_user_seeks_court_costs",
+    "feat_user_seeks_interest",
+    "feat_contract_present",
+    "feat_opposing_party_has_attorney",
 )
 
 MODEL_FEATURE_COLUMNS = tuple(
@@ -87,7 +103,7 @@ def load_dataset_csv(path: Path) -> pd.DataFrame:
 def preprocess_feature_frame(
     raw_features: pd.DataFrame,
     *,
-    drop_missing: bool = True,
+    drop_missing: bool = False,
 ) -> tuple[pd.DataFrame, pd.Index]:
     """Convert raw ``feat_*`` columns to the model matrix.
 
@@ -129,7 +145,7 @@ def prepare_classifier_dataset(df: pd.DataFrame) -> PreparedDataset:
     target_df = df.dropna(subset=["label_outcome"]).copy()
     y = target_df["label_outcome"].isin(WIN_OUTCOMES).astype(int)
 
-    x, dropped_index = preprocess_feature_frame(target_df, drop_missing=True)
+    x, dropped_index = preprocess_feature_frame(target_df, drop_missing=False)
     if len(dropped_index) > 0:
         y = y.drop(index=dropped_index)
 
@@ -152,7 +168,7 @@ def prepare_regressor_dataset(df: pd.DataFrame) -> PreparedDataset:
     target_df = df.dropna(subset=["label_total_awarded"]).copy()
     y = target_df["label_total_awarded"].astype(float)
 
-    x, dropped_index = preprocess_feature_frame(target_df, drop_missing=True)
+    x, dropped_index = preprocess_feature_frame(target_df, drop_missing=False)
     if len(dropped_index) > 0:
         y = y.drop(index=dropped_index)
 
@@ -206,6 +222,22 @@ def feature_vector_to_raw_row(vector: FeatureVector) -> dict[str, Any]:
         "feat_witness_count": vector.witness_count,
         "feat_text_length": vector.text_length,
         "feat_document_count": vector.document_count,
+        "feat_attempted_mediation": vector.attempted_mediation,
+        "feat_claim_amount_is_within_small_claims_limit": vector.claim_amount_is_within_small_claims_limit,
+        "feat_damages_are_ongoing": vector.damages_are_ongoing,
+        "feat_damages_have_third_party_valuation": vector.damages_have_third_party_valuation,
+        "feat_damages_include_lost_wages": vector.damages_include_lost_wages,
+        "feat_damages_include_out_of_pocket_costs": vector.damages_include_out_of_pocket_costs,
+        "feat_damages_include_property_value_loss": vector.damages_include_property_value_loss,
+        "feat_gave_opportunity_to_cure": vector.gave_opportunity_to_cure,
+        "feat_has_signed_contract_attached": vector.has_signed_contract_attached,
+        "feat_opposing_party_filed_response_documents": vector.opposing_party_filed_response_documents,
+        "feat_sent_certified_mail": vector.sent_certified_mail,
+        "feat_sent_written_demand_letter": vector.sent_written_demand_letter,
+        "feat_user_seeks_court_costs": vector.user_seeks_court_costs,
+        "feat_user_seeks_interest": vector.user_seeks_interest,
+        "feat_contract_present": vector.contract_present,
+        "feat_opposing_party_has_attorney": vector.opposing_party_has_attorney,
     }
 
 

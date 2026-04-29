@@ -8,7 +8,6 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -22,6 +21,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 
 import mlflow
+from xgboost import XGBClassifier, XGBRegressor
 from features.schema import FeatureVector
 from models.config import MLflowConfig
 from models.tracking import (
@@ -51,9 +51,10 @@ class ClassifierTrainer:
             "max_depth": 5,
             "learning_rate": 0.1,
             "random_state": RANDOM_STATE,
+            "eval_metric": "logloss",
         }
         self._params.update(model_params)
-        self._model = GradientBoostingClassifier(**self._params)
+        self._model = XGBClassifier(**self._params)
 
     def train(
         self,
@@ -116,7 +117,7 @@ class ClassifierTrainer:
             return metrics
 
     @property
-    def model(self) -> GradientBoostingClassifier:
+    def model(self) -> XGBClassifier:
         return self._model
 
     @property
@@ -136,7 +137,7 @@ class RegressorTrainer:
             "random_state": RANDOM_STATE,
         }
         self._params.update(model_params)
-        self._model = GradientBoostingRegressor(**self._params)
+        self._model = XGBRegressor(**self._params)
 
     def train(
         self,
@@ -196,7 +197,7 @@ class RegressorTrainer:
             return metrics
 
     @property
-    def model(self) -> GradientBoostingRegressor:
+    def model(self) -> XGBRegressor:
         return self._model
 
     @property

@@ -21,7 +21,7 @@ Classification and regression model training for predicting case outcomes.
 
 ## Scripts and registry workflow
 
-- **`scripts/train_classifier_real.py`** — **primary training path**. Trains classifier + regressor on **real `dataset.csv`** using the `v2 feat_*` preprocessing in `models.dataset`. Logs dataset SHA-256, feature columns artifact, and metrics. Registers `litigation-win-classifier` and `litigation-monetary-regressor`.
+- **`scripts/train_models.py`** — **primary training path**. Trains classifier + regressor on **real `dataset.csv`** using the `v2 feat_*` preprocessing in `models.dataset`. Logs dataset SHA-256, feature columns artifact, and metrics. Registers `litigation-win-classifier` and `litigation-monetary-regressor`.
 - **`scripts/train_binary_classifier.py`** — trains the same two models on **synthetic** data (for demo/smoke test purposes). Uses the older `FeatureVector.to_model_input()` columns, not the v2 feature set.
 - **`scripts/promote_models_to_production.py`** — moves latest registered version of each model to **Production** (API loads `models:/.../Production`). MLflow may warn that stages are deprecated in favor of aliases in a future major version.
 - **`models/tracking.get_or_create_experiment`** — for **remote HTTP** tracking URIs, does **not** pass a client `artifact_location` (server must use **`--serve-artifacts`**). If an existing experiment still has a **server-local** `artifact_location` (`/home/...` or `file:`), training uses a sibling experiment name with suffix **`-remote-artifacts`** so laptops can upload artifacts.

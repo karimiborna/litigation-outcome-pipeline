@@ -4,7 +4,7 @@ Two notebooks: one for data extraction (Colab/GPU), one for ML training and anal
 
 ## ernesto_ML.ipynb
 
-Local ML training notebook. Loads `dataset.csv`, trains classifier and regressor using the `v2 feat_*` feature set, and logs runs to the hosted MLflow server (`http://35.208.251.175:5000`). Use this for exploratory model work and validation before running `scripts/train_classifier_real.py` for the production registry run.
+Local ML training notebook. Loads `dataset.csv`, trains classifier and regressor using the `v2 feat_*` feature set, and logs runs to the hosted MLflow server (`http://35.208.251.175:5000`). Use this for exploratory model work and validation before running `scripts/train_models.py` for the production registry run.
 
 ## colab_gpu_extraction.ipynb
 
