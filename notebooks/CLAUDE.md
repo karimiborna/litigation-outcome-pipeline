@@ -1,6 +1,12 @@
 # notebooks/
 
-Three notebooks: one for data extraction (Colab/GPU), one for ML training and analysis (local), and one for probing new SF court case numbers (local). See `scrape_new_cases_walkthrough.md` for a step-by-step companion to the scraping notebook.
+Four notebooks:
+- `colab_gpu_extraction.ipynb` — full extraction pipeline on Colab GPU (steps 1–6)
+- `local_pdf_pipeline.ipynb` — local-only steps 1–2 (download + PyMuPDF) on M4 via Drive Desktop sync, used when Cloudflare blocks the Colab IP range
+- `ernesto_ML.ipynb` — exploratory ML training and analysis (local)
+- `scrape_new_cases.ipynb` — local-only probing for new SF court case numbers
+
+See `scrape_new_cases_walkthrough.md` for a step-by-step companion to the scraping notebook.
 
 ## ernesto_ML.ipynb
 
@@ -64,6 +70,29 @@ Only these types are downloaded/extracted (procedural docs skipped):
 - GPU vision (Qwen2-VL-7B 4-bit via `bitsandbytes`) is the active fallback for scanned PDFs; PyMuPDF handles e-filed PDFs with a text layer. The earlier NVIDIA-API path has been removed.
 - `bitsandbytes` 4-bit loading is CUDA-only — Step 3/4 will not run on Apple Silicon (MPS) without swapping the loader to MLX or `bfloat16` unquantized.
 - Final zip download assumes Colab environment (`google.colab.files`).
+
+## local_pdf_pipeline.ipynb
+
+Local-only notebook that runs **Step 1 (PDF download)** and **Step 2 (PyMuPDF text extraction)** on the M4. Same code as `colab_gpu_extraction.ipynb` cells 5 + 7, but pointed at the Google Drive Desktop sync folder so PDFs/extracted text land in the same `litigation-pipeline/` directory Colab uses.
+
+### Why this exists
+
+Cloudflare blocks SF court (`webapps.sftc.org`) requests from Colab's IP range but not from the user's laptop (where the browser challenge was solved). Symptom: cell-5 in the Colab notebook returns 403 immediately for every case after Cloudflare flags the runtime's IP. Verified via `curl` test: M4 → 200 for both CSM24 and CSM25 cases; Colab → 403 for both.
+
+### Workflow
+
+1. Install **Google Drive for Desktop** on the M4 and sign in with the same Google account used by Colab. Confirm `~/Library/CloudStorage/GoogleDrive-<email>/My Drive/litigation-pipeline/` exists.
+2. `conda activate ML` (the env where the repo is `pip install -e`'d).
+3. Open `local_pdf_pipeline.ipynb`, edit `DRIVE_PATH` if your email differs, run cell-3 (setup) — it prints how many PDFs are already in Drive.
+4. Run cell-5 (download). When prompted, paste a fresh SessionID from your browser. The skip-existing check covers cases already on Drive (no re-download of the 800 CSM25 cases from prior Colab runs).
+5. Run cell-7 (PyMuPDF). Text files land in `<DRIVE_PATH>/extracted/`. Scanned PDFs (<100 chars) get queued for the GPU step.
+6. Switch to `colab_gpu_extraction.ipynb` and run from **cell-9 (Step 3 — Load Vision Model)** onward — Colab sees the same files via Drive mount.
+
+### Handoff handling
+
+- Both result-code `-1` (API session expired) and HTTP 403 (Cloudflare reject) trigger a re-prompt for a fresh SessionID via the same retry loop.
+- Corrupt PDFs (partial downloads / HTML error pages) are skipped with a log line; user can `.unlink()` them and re-run Step 1 to re-download.
+- Interrupt-safe: the per-case skip check on `PDF_DIR.glob` lets you Ctrl+C any time and resume.
 
 ## scrape_new_cases.ipynb
 
