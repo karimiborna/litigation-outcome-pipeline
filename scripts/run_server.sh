@@ -1,64 +1,64 @@
 #!/bin/bash
-# Start the LexRatio FastAPI server with proper environment setup
+# Start the LexRatio FastAPI server with proper environment setup.
+#
+# This is the recommended entry point on macOS — it sets the fork-safety env
+# vars (OBJC_DISABLE_INITIALIZE_FORK_SAFETY, no_proxy, KMP_DUPLICATE_LIB_OK)
+# in the shell *before* Python starts, which is the only place they take effect
+# in time. Without these, the lifespan model-load segfaults on macOS because
+# MLflow's multiprocessing.fork() collides with libomp/CoreFoundation already
+# loaded by xgboost/numpy.
 
 set -e
 
-# Script directory
+# --- Project paths ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# Activate virtual environment if it exists
-if [ -d "$PROJECT_ROOT/.venv" ]; then
-    echo "Activating virtual environment..."
-    source "$PROJECT_ROOT/.venv/bin/activate"
-elif [ -d "$PROJECT_ROOT/venv" ]; then
-    echo "Activating virtual environment..."
-    source "$PROJECT_ROOT/venv/bin/activate"
+# --- macOS fork-safety env vars (must be set before any python invocation) ---
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY  — disables Apple's fork-after-Foundation abort
+# no_proxy='*'                         — stops CFNetwork proxy lookup in forked child
+# KMP_DUPLICATE_LIB_OK                 — silences Intel-OMP duplicate-runtime aborts
+# OMP_NUM_THREADS=1, MKL_NUM_THREADS=1 — disables OpenMP/MKL worker threads;
+#                                        XGBoost spawns these on first import, and
+#                                        mlflow's artifact downloader then forks,
+#                                        which crashes the child even when other
+#                                        fork-safety flags are set. Single-threaded
+#                                        inference is acceptable for this app size.
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+    export no_proxy='*'
+    export KMP_DUPLICATE_LIB_OK=TRUE
+    export OMP_NUM_THREADS=1
+    export MKL_NUM_THREADS=1
 fi
 
-# Load environment variables from .env if it exists
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    echo "Loading environment from .env..."
-    set -a
-    source "$PROJECT_ROOT/.env"
-    set +a
-fi
+# --- .env is read directly by pydantic-settings inside the Python process
+#     (FeaturesConfig, MLflowConfig, RetrievalConfig all use env_file=".env").
+#     We deliberately do NOT `source .env` here because shell parsers choke on
+#     unquoted spaces/parens in values like SCRAPER_USER_AGENT.
 
-# Check required environment variables
-if [ -z "$MLFLOW_TRACKING_URI" ]; then
-    echo "Warning: MLFLOW_TRACKING_URI not set, using default http://localhost:5000"
-    export MLFLOW_TRACKING_URI="http://localhost:5000"
-fi
+# --- MLflow defaults: hosted GCP server. Never fall back to localhost. ---
+: "${MLFLOW_TRACKING_URI:=http://35.208.251.175:5000}"
+: "${MLFLOW_REGISTRY_URI:=$MLFLOW_TRACKING_URI}"
+export MLFLOW_TRACKING_URI MLFLOW_REGISTRY_URI
 
-if [ -z "$LLM_API_KEY" ]; then
-    echo "Warning: LLM_API_KEY not set - feature extraction may fail"
-fi
-
-# Print startup info
+# --- Banner ---
 echo "=========================================="
 echo "Litigation Outcome Pipeline - API Server"
 echo "=========================================="
-echo "MLflow Server: ${MLFLOW_TRACKING_URI}"
-echo "API Host: 0.0.0.0"
-echo "API Port: 8000"
-echo "Frontend: http://localhost:8000"
-echo "API Docs: http://localhost:8000/docs"
+echo "MLflow Server: $MLFLOW_TRACKING_URI"
+echo "API:           http://localhost:8000"
+echo "Docs:          http://localhost:8000/docs"
 echo "=========================================="
-echo ""
 
-# Determine reload flag (development vs production)
+# --- Reload only outside production ---
 RELOAD_FLAG="--reload"
 if [ "$ENV" = "production" ]; then
     RELOAD_FLAG=""
-    echo "Running in PRODUCTION mode (no auto-reload)"
-else
-    echo "Running in DEVELOPMENT mode (with auto-reload)"
 fi
 
-# Start the server
 cd "$PROJECT_ROOT"
-echo "Starting FastAPI server..."
-python -m uvicorn api.app:app \
+exec python -m uvicorn api.app:app \
     --host 0.0.0.0 \
     --port 8000 \
     $RELOAD_FLAG \

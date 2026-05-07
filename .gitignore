@@ -52,3 +52,17 @@ scraper/state/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Derived data — belongs in cloud storage, not git
+# (dataset.csv intentionally tracked — it's the small training-input table)
+/features_cache/
+/labels/
+/labels.json
+/dataset.json
+*.zip
+/mlrun/
+
+# Notebook checkpoints (keep .ipynb source tracked)
+.ipynb_checkpoints/
+mlflow.db
+ruff_output.txt

@@ -3,53 +3,51 @@
 from __future__ import annotations
 
 import logging
-import os
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from counterfactual.analyzer import CounterfactualAnalyzer
 from features.config import FeaturesConfig
 from features.extraction import FeatureExtractor
 from models.config import MLflowConfig
-from models.tracking import load_production_model
+from models.tracking import init_mlflow, load_production_model
+from models.validation import ModelValidationError, validate_all
 from retrieval.config import RetrievalConfig
-
-if TYPE_CHECKING:
-    pass
+from retrieval.index import CaseIndex
 
 logger = logging.getLogger(__name__)
-
-
-def _env_flag(name: str) -> bool:
-    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 class AppState:
     """Holds loaded models and services for the API lifetime."""
 
-    def __init__(self) -> None:
+    def __init__(self, mlflow_config: MLflowConfig | None = None) -> None:
+        self.mlflow_config = mlflow_config or MLflowConfig()
         self.classifier: Any = None
         self.regressor: Any = None
         self.feature_extractor: FeatureExtractor | None = None
-        self.case_index: Any = None
+        self.case_index: CaseIndex | None = None
         self.counterfactual_analyzer: CounterfactualAnalyzer | None = None
         self.models_loaded: bool = False
         self.classifier_loaded: bool = False
         self.regressor_loaded: bool = False
 
-    def load_models(self, mlflow_config: MLflowConfig | None = None) -> None:
-        """Load production models from MLflow registry."""
-        if _env_flag("API_SKIP_MODEL_LOADING"):
-            logger.info("Skipping model loading because API_SKIP_MODEL_LOADING is enabled")
-            self.classifier = None
-            self.regressor = None
-            self.counterfactual_analyzer = None
-            self.classifier_loaded = False
-            self.regressor_loaded = False
-            self.models_loaded = False
-            return
+        # Initialize MLflow connection on startup
+        try:
+            init_mlflow(self.mlflow_config)
+            logger.info("MLflow initialized with tracking URI: %s", self.mlflow_config.tracking_uri)
+        except Exception as e:
+            logger.warning("Failed to initialize MLflow: %s", e)
 
-        config = mlflow_config or MLflowConfig()
+    def load_models(self, mlflow_config: MLflowConfig | None = None) -> None:
+        """Load production models from MLflow registry.
+
+        Loads the classifier and regressor sequentially on the main thread.
+        MLflow's artifact downloader uses multiprocessing.fork() internally; on
+        macOS, calling fork() from a worker thread crashes the child due to
+        Objective-C / OpenMP fork-safety. Sequential loading on the main thread
+        avoids that.
+        """
+        config = mlflow_config or self.mlflow_config
         self.classifier_loaded = False
         self.regressor_loaded = False
         self.models_loaded = False
@@ -59,47 +57,65 @@ class AppState:
             self.classifier = load_production_model(config.classifier_model_name, config)
             self.classifier_loaded = True
             logger.info("Classifier loaded from registry: %s", config.classifier_model_name)
-        except Exception:
-            logger.exception("Failed to load classifier from MLflow registry")
+        except Exception as e:
+            logger.warning("Failed to load classifier: %s", e)
             self.classifier = None
 
         try:
             self.regressor = load_production_model(config.regressor_model_name, config)
             self.regressor_loaded = True
             logger.info("Regressor loaded from registry: %s", config.regressor_model_name)
-        except Exception:
-            logger.exception("Failed to load regressor from MLflow registry")
+        except Exception as e:
+            logger.warning("Failed to load regressor: %s", e)
             self.regressor = None
 
-        if self.classifier_loaded and self.regressor_loaded:
-            self.counterfactual_analyzer = CounterfactualAnalyzer(self.classifier, self.regressor)
-            self.models_loaded = True
-            logger.info("Production classifier and regressor ready")
+        if not (self.classifier_loaded and self.regressor_loaded):
+            if not self.classifier_loaded:
+                logger.warning("Classifier not loaded — predictions will fail")
+            if not self.regressor_loaded:
+                logger.warning("Regressor not loaded — predictions will fail")
+            return
+
+        try:
+            validate_all(self.classifier, self.regressor)
+        except ModelValidationError as e:
+            logger.error(
+                "Production models failed startup validation: %s. "
+                "Marking models_loaded=False so /predict returns 503 instead of "
+                "serving wrong predictions. Fix and re-promote.",
+                e,
+            )
+            return
+
+        self.counterfactual_analyzer = CounterfactualAnalyzer(self.classifier, self.regressor)
+        self.models_loaded = True
+        logger.info("Production classifier and regressor ready (MLflow: %s)", config.tracking_uri)
 
     def load_feature_extractor(self, config: FeaturesConfig | None = None) -> None:
-        self.feature_extractor = FeatureExtractor(config or FeaturesConfig())
+        try:
+            self.feature_extractor = FeatureExtractor(config or FeaturesConfig())
+            logger.info("Feature extractor initialized")
+        except ImportError as e:
+            logger.warning("Feature extractor dependencies missing (%s)", e)
+            self.feature_extractor = None
+        except Exception as e:
+            logger.warning("Failed to initialize feature extractor: %s", e)
+            self.feature_extractor = None
+
+        if self.feature_extractor is None:
+            logger.warning("Feature extractor not ready — feature extraction will fail")
 
     def load_case_index(self, config: RetrievalConfig | None = None) -> None:
         config = config or RetrievalConfig()
-        index_path = Path(config.index_path)
-        index_file = index_path / "index.faiss"
-        metadata_file = index_path / "metadata.json"
-
-        if not index_file.exists() or not metadata_file.exists():
-            logger.info(
-                "No retrieval index found at %s — retrieval will be unavailable", index_path
-            )
-            self.case_index = None
-            return
-
-        from retrieval.index import CaseIndex
-
-        self.case_index = CaseIndex(config)
         try:
+            self.case_index = CaseIndex(config)
             self.case_index.load()
             logger.info("Case index loaded: %d cases", self.case_index.size)
-        except Exception:
-            logger.warning("No existing case index found — retrieval will be unavailable")
+        except ImportError as e:
+            logger.warning("FAISS not available (%s) — case index unavailable", e)
+            self.case_index = None
+        except Exception as e:
+            logger.warning("Failed to load case index: %s", e)
             self.case_index = None
 
 

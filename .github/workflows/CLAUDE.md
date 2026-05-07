@@ -4,17 +4,37 @@ GitHub Actions workflows for automated testing, validation, building, and deploy
 
 ## Responsibilities
 
-- **Test** — run unit and integration tests on each push/PR
-- **Lint** — code quality checks (formatting, type checking)
-- **Data validation** — verify data schemas and integrity on data changes
-- **Docker build** — build and push container images on merge to main
-- **Deploy** — deploy updated services to cloud infrastructure (ECS / Cloud Run)
+**`ci.yml`** — Runs on every PR and push to main
+- Lint with ruff (`ruff check`)
+- Format check with ruff (`ruff format --check`)
+- Type check with mypy (scoped to `scraper/` and `data/`)
+- Run all unit tests with pytest (Python 3.10 + 3.12 matrix)
+- Fails PR if any step fails
 
 ## Key Considerations
 
-- Workflows trigger on push to main and on pull requests
-- Tests must pass before merge is allowed
-- Docker images are tagged with git SHA for traceability
-- Deployment workflows need cloud credentials stored as GitHub Secrets
-- Separate workflows for CI (test/lint) and CD (build/deploy) for clarity
-- Data validation workflow should run when anything in `data/schemas/` changes
+**`docker-build.yml`** — Runs on push to main
+- Builds both Docker images (features + inference)
+- Pushes to **GitHub Container Registry (GHCR)** — not ECR
+- Images tagged as `ghcr.io/<owner>/<repo>-inference` and `ghcr.io/<owner>/<repo>-features`
+- Uses `GITHUB_TOKEN` for auth — no extra secrets needed for build/push
+
+**`deploy.yml`** — Runs on push to main (after docker-build)
+- Deploys updated images to ECS
+- Runs integration tests against deployed service
+
+## Secrets Required
+
+Set in GitHub repo settings → Secrets:
+- `NVIDIA_API_KEY`
+- `MLFLOW_TRACKING_URI` (should be `http://35.208.251.175:5000`)
+- AWS credentials only needed if/when ECS deploy is wired up
+
+## Local CI Check
+
+```bash
+ruff check .
+ruff format --check .
+mypy scraper/ data/ --ignore-missing-imports
+pytest tests/unit/
+```

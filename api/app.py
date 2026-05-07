@@ -307,9 +307,12 @@ async def counterfactual(request: CounterfactualRequest) -> CounterfactualRespon
     case = _build_processed_case_from_cf(request)
     feature_vector = await app_state.feature_extractor.extract(case)
 
-    results = app_state.counterfactual_analyzer.analyze(
-        feature_vector, perturbations=request.perturbations
-    )
+    try:
+        results = app_state.counterfactual_analyzer.analyze(
+            feature_vector, perturbations=request.perturbations
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     items = [
         CounterfactualItem(

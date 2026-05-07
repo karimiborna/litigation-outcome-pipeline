@@ -26,6 +26,7 @@ dependencies = [
     "uvicorn>=0.29",
     "sentence-transformers>=2.5",
     "faiss-cpu>=1.8",
+    "xgboost>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +46,7 @@ include = ["scraper*", "data*", "features*", "models*", "api*", "retrieval*", "c
 [tool.ruff]
 target-version = "py310"
 line-length = 100
+exclude = ["notebooks/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
@@ -55,6 +57,7 @@ select = ["E", "F", "I", "N", "W", "UP"]
 "features/labels.py" = ["E501"]   # LLM prompt strings exceed 100 chars
 "scraper/scrape.py" = ["E402", "E501"]  # sys.path manipulation + argparse help strings
 "notebooks/*" = ["E402"]  # notebooks import conditionally after setup cells
+"api/app.py" = ["E501", "I001"]  # Borna's file — line length and import order deferred
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
