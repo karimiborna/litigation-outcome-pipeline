@@ -334,6 +334,12 @@ The retrieval module uses `sentence-transformers` (default model: `all-MiniLM-L6
 
 Given a new case, it returns the top-K most similar historical cases with similarity scores. Results are filtered by a configurable similarity threshold (default: 0.3). The index persists to disk at `data/retrieval_index/` and needs to be rebuilt when new historical data is added.
 
+Build the index from local processed case text with:
+
+```bash
+python scripts/build_retrieval_index.py
+```
+
 ### Counterfactual Analysis
 
 Given a case's feature vector, the counterfactual module:

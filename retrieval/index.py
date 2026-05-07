@@ -6,15 +6,7 @@ import json
 import logging
 from pathlib import Path
 
-# Optional import for FAISS
-try:
-    import faiss
-
-    FAISS_AVAILABLE = True
-except ImportError:
-    FAISS_AVAILABLE = False
-    faiss = None
-
+import faiss
 import numpy as np
 
 from retrieval.config import RetrievalConfig
@@ -30,7 +22,12 @@ class CaseMetadataStore:
         self._cases: list[dict] = []
 
     def add(
-        self, case_number: str, case_title: str, outcome: str | None = None, **extra: str
+        self,
+        case_number: str,
+        case_title: str,
+        outcome: str | None = None,
+        case_snippet: str | None = None,
+        **extra: str,
     ) -> int:
         idx = len(self._cases)
         self._cases.append(
@@ -38,6 +35,7 @@ class CaseMetadataStore:
                 "case_number": case_number,
                 "case_title": case_title,
                 "outcome": outcome,
+                "case_snippet": case_snippet,
                 **extra,
             }
         )
@@ -81,18 +79,15 @@ class CaseIndex:
     """FAISS vector index for finding similar historical cases."""
 
     def __init__(self, config: RetrievalConfig | None = None):
-        if not FAISS_AVAILABLE:
-            logger.warning("FAISS not available — case index will not work")
-            self._config = config or RetrievalConfig()
-            self._embedding_model = None
-            self._index: None = None
-            self._metadata = CaseMetadataStore()
-            return
-
         self._config = config or RetrievalConfig()
         self._embedding_model = EmbeddingModel(config)
         self._index: faiss.IndexFlatIP | None = None
         self._metadata = CaseMetadataStore()
+
+    @staticmethod
+    def _make_snippet(text: str, max_chars: int = 500) -> str:
+        cleaned = " ".join(text.replace("\n", " ").split())
+        return cleaned[:max_chars].strip()
 
     def build(
         self,
@@ -112,8 +107,14 @@ class CaseIndex:
         self._index.add(embeddings.astype(np.float32))
 
         self._metadata = CaseMetadataStore()
-        for cn, ct, outcome in zip(case_numbers, case_titles, outcomes, strict=False):
-            self._metadata.add(case_number=cn, case_title=ct, outcome=outcome)
+        for text, cn, ct, outcome in zip(texts, case_numbers, case_titles, outcomes):
+            snippet = self._make_snippet(text)
+            self._metadata.add(
+                case_number=cn,
+                case_title=ct,
+                outcome=outcome,
+                case_snippet=snippet,
+            )
 
         logger.info("Index built: %d vectors, dimension=%d", self._index.ntotal, dimension)
 

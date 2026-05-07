@@ -12,40 +12,18 @@ from features.schema import FeatureVector
 logger = logging.getLogger(__name__)
 
 FEATURE_CONSTRAINTS: dict[str, dict[str, Any]] = {
-    # Numerics
-    "feat_monetary_amount_claimed": {"min": 0.0, "max": None, "type": "float"},
-    "feat_witness_count": {"min": 0.0, "max": None, "type": "int"},
-    # Representation
-    "feat_user_has_attorney": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_opposing_party_has_attorney": {"min": 0.0, "max": 1.0, "type": "bool"},
-    # Counter-filings / contract presence
-    "feat_counterclaim_present": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_contract_present": {"min": 0.0, "max": 1.0, "type": "bool"},
-    # Evidence existence
-    "feat_has_photos_or_physical_evidence": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_has_receipts_or_financial_records": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_has_written_communications": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_has_witness_statements": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_has_signed_contract_attached": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_has_repair_or_replacement_estimate": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_has_police_report": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_has_medical_records": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_has_expert_assessment": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_has_invoices_or_billing_records": {"min": 0.0, "max": 1.0, "type": "bool"},
-    # Argument content
-    "feat_argument_cites_specific_dates": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_argument_cites_specific_dollar_amounts": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_argument_cites_contract_or_document": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_argument_has_chronological_timeline": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_argument_names_specific_witnesses": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_argument_quantifies_each_damage_component": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_argument_cites_statute_or_legal_basis": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_argument_identifies_specific_location": {"min": 0.0, "max": 1.0, "type": "bool"},
-    # Procedural / pre-filing conduct
-    "feat_sent_written_demand_letter": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_sent_certified_mail": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_gave_opportunity_to_cure": {"min": 0.0, "max": 1.0, "type": "bool"},
-    "feat_attempted_mediation": {"min": 0.0, "max": 1.0, "type": "bool"},
+    "evidence_strength": {"min": 1.0, "max": 5.0, "type": "int"},
+    "argument_clarity_plaintiff": {"min": 1.0, "max": 5.0, "type": "int"},
+    "argument_clarity_defendant": {"min": 1.0, "max": 5.0, "type": "int"},
+    "timeline_clarity": {"min": 1.0, "max": 5.0, "type": "int"},
+    "monetary_amount_claimed": {"min": 0.0, "max": None, "type": "float"},
+    "witness_count": {"min": 0.0, "max": None, "type": "int"},
+    "contract_present": {"min": 0.0, "max": 1.0, "type": "bool"},
+    "documentary_evidence": {"min": 0.0, "max": 1.0, "type": "bool"},
+    "prior_attempts_to_resolve": {"min": 0.0, "max": 1.0, "type": "bool"},
+    "legal_representation_plaintiff": {"min": 0.0, "max": 1.0, "type": "bool"},
+    "legal_representation_defendant": {"min": 0.0, "max": 1.0, "type": "bool"},
+    "counterclaim_present": {"min": 0.0, "max": 1.0, "type": "bool"},
 }
 
 PERTURBABLE_FEATURES = list(FEATURE_CONSTRAINTS.keys())

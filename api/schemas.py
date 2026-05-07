@@ -39,12 +39,16 @@ class SimilarCaseItem(BaseModel):
     case_title: str
     similarity_score: float
     outcome: str | None = None
+    case_snippet: str | None = None
 
 
 class SimilarCaseResponse(BaseModel):
     query_summary: str
     similar_cases: list[SimilarCaseItem]
+    best_cases: list[SimilarCaseItem] = []
     explanation: str
+    comparison_insights: str | None = None
+    advice: str | None = None
 
 
 class CounterfactualRequest(BaseModel):
@@ -89,18 +93,15 @@ class BatchPredictionResponse(BaseModel):
     total: int
 
 
-class LexRatioAnalysisRequest(BaseModel):
-    """Request for LexRatio small claims analysis."""
-
+class FrontendAnalyzeRequest(BaseModel):
     case_text: str = Field(..., min_length=10)
-    case_title: str | None = None
-    cause_of_action: str | None = None
-    claim_amount: float | None = None
+    claim_amount: float | None = Field(default=None, ge=0)
+    claim_category: str | None = None
+    evidence_text: str | None = None
+    prior_steps_text: str | None = None
 
 
-class LexRatioSignals(BaseModel):
-    """Signal detection for case strengths."""
-
+class FrontendSignals(BaseModel):
     has_written_evidence: bool | None = None
     sent_demand_letter: bool | None = None
     has_contract: bool | None = None
@@ -109,14 +110,12 @@ class LexRatioSignals(BaseModel):
     damages_itemized: bool | None = None
 
 
-class LexRatioAnalysisResponse(BaseModel):
-    """Response with small claims court analysis."""
-
-    win_probability: int = Field(..., ge=0, le=100)
+class FrontendAnalyzeResponse(BaseModel):
+    win_probability: int
     expected_award: float
-    confidence: str = Field(..., pattern="^(high|medium|low)$")
+    confidence: str
     verdict_summary: str
     strengths: list[str]
     weaknesses: list[str]
     advice: str
-    signals: LexRatioSignals
+    signals: FrontendSignals

@@ -9,6 +9,7 @@ Embedding-based similar case retrieval and explanation generation grounded in hi
 - Given a new case, retrieve the top-K most similar historical cases
 - Use retrieved cases to generate explanations that are grounded in real examples
 - Provide context for predictions — "cases like yours typically resulted in..."
+- Persist the FAISS index and metadata to disk so reloads are fast and incremental rebuilds are possible
 
 ## Key Considerations
 
