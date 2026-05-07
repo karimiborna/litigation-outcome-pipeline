@@ -333,8 +333,6 @@ def _run_prediction_sync(vector: FeatureVector, case_number: str | None) -> Pred
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    model_input = pd.DataFrame([vector.to_model_input()])
-
     win_prob = float(app_state.classifier.predict_proba(model_input)[0, 1])
     monetary = float(app_state.regressor.predict(model_input)[0])
 

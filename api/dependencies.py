@@ -10,6 +10,7 @@ from features.config import FeaturesConfig
 from features.extraction import FeatureExtractor
 from models.config import MLflowConfig
 from models.tracking import init_mlflow, load_production_model
+from models.validation import ModelValidationError, validate_all
 from retrieval.config import RetrievalConfig
 from retrieval.index import CaseIndex
 
@@ -38,74 +39,70 @@ class AppState:
             logger.warning("Failed to initialize MLflow: %s", e)
 
     def load_models(self, mlflow_config: MLflowConfig | None = None) -> None:
-        """Load production models from MLflow registry."""
-        import threading
+        """Load production models from MLflow registry.
 
+        Loads the classifier and regressor sequentially on the main thread.
+        MLflow's artifact downloader uses multiprocessing.fork() internally; on
+        macOS, calling fork() from a worker thread crashes the child due to
+        Objective-C / OpenMP fork-safety. Sequential loading on the main thread
+        avoids that.
+        """
         config = mlflow_config or self.mlflow_config
         self.classifier_loaded = False
         self.regressor_loaded = False
         self.models_loaded = False
         self.counterfactual_analyzer = None
 
-        def load_classifier_task():
-            try:
-                self.classifier = load_production_model(config.classifier_model_name, config)
-                self.classifier_loaded = True
-                logger.info("Classifier loaded from registry: %s", config.classifier_model_name)
-            except Exception as e:
-                logger.warning("Failed to load classifier: %s", e)
-                self.classifier = None
+        try:
+            self.classifier = load_production_model(config.classifier_model_name, config)
+            self.classifier_loaded = True
+            logger.info("Classifier loaded from registry: %s", config.classifier_model_name)
+        except Exception as e:
+            logger.warning("Failed to load classifier: %s", e)
+            self.classifier = None
 
-        def load_regressor_task():
-            try:
-                self.regressor = load_production_model(config.regressor_model_name, config)
-                self.regressor_loaded = True
-                logger.info("Regressor loaded from registry: %s", config.regressor_model_name)
-            except Exception as e:
-                logger.warning("Failed to load regressor: %s", e)
-                self.regressor = None
+        try:
+            self.regressor = load_production_model(config.regressor_model_name, config)
+            self.regressor_loaded = True
+            logger.info("Regressor loaded from registry: %s", config.regressor_model_name)
+        except Exception as e:
+            logger.warning("Failed to load regressor: %s", e)
+            self.regressor = None
 
-        # Load models in parallel with timeout
-        classifier_thread = threading.Thread(target=load_classifier_task, daemon=True)
-        regressor_thread = threading.Thread(target=load_regressor_task, daemon=True)
-
-        classifier_thread.start()
-        regressor_thread.start()
-
-        # Wait maximum 30 seconds for both to finish
-        classifier_thread.join(timeout=30)
-        regressor_thread.join(timeout=30)
-
-        if self.classifier_loaded and self.regressor_loaded:
-            self.counterfactual_analyzer = CounterfactualAnalyzer(self.classifier, self.regressor)
-            self.models_loaded = True
-            logger.info(
-                "Production classifier and regressor ready (MLflow: %s)", config.tracking_uri
-            )
-        else:
+        if not (self.classifier_loaded and self.regressor_loaded):
             if not self.classifier_loaded:
                 logger.warning("Classifier not loaded — predictions will fail")
             if not self.regressor_loaded:
                 logger.warning("Regressor not loaded — predictions will fail")
+            return
+
+        try:
+            validate_all(self.classifier, self.regressor)
+        except ModelValidationError as e:
+            logger.error(
+                "Production models failed startup validation: %s. "
+                "Marking models_loaded=False so /predict returns 503 instead of "
+                "serving wrong predictions. Fix and re-promote.",
+                e,
+            )
+            return
+
+        self.counterfactual_analyzer = CounterfactualAnalyzer(self.classifier, self.regressor)
+        self.models_loaded = True
+        logger.info(
+            "Production classifier and regressor ready (MLflow: %s)", config.tracking_uri
+        )
 
     def load_feature_extractor(self, config: FeaturesConfig | None = None) -> None:
-        import threading
-
-        def load_task():
-            try:
-                self.feature_extractor = FeatureExtractor(config or FeaturesConfig())
-                logger.info("Feature extractor initialized")
-            except ImportError as e:
-                logger.warning("Feature extractor dependencies missing (%s)", e)
-                self.feature_extractor = None
-            except Exception as e:
-                logger.warning("Failed to initialize feature extractor: %s", e)
-                self.feature_extractor = None
-
-        # Load in background thread with 15-second timeout
-        thread = threading.Thread(target=load_task, daemon=True)
-        thread.start()
-        thread.join(timeout=15)
+        try:
+            self.feature_extractor = FeatureExtractor(config or FeaturesConfig())
+            logger.info("Feature extractor initialized")
+        except ImportError as e:
+            logger.warning("Feature extractor dependencies missing (%s)", e)
+            self.feature_extractor = None
+        except Exception as e:
+            logger.warning("Failed to initialize feature extractor: %s", e)
+            self.feature_extractor = None
 
         if self.feature_extractor is None:
             logger.warning("Feature extractor not ready — feature extraction will fail")
