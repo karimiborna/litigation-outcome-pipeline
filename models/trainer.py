@@ -19,9 +19,9 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from sklearn.model_selection import train_test_split
+from xgboost import XGBClassifier, XGBRegressor
 
 import mlflow
-from xgboost import XGBClassifier, XGBRegressor
 from features.schema import FeatureVector
 from models.config import MLflowConfig
 from models.tracking import (

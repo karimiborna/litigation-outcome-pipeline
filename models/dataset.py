@@ -223,7 +223,9 @@ def feature_vector_to_raw_row(vector: FeatureVector) -> dict[str, Any]:
         "feat_text_length": vector.text_length,
         "feat_document_count": vector.document_count,
         "feat_attempted_mediation": vector.attempted_mediation,
-        "feat_claim_amount_is_within_small_claims_limit": vector.claim_amount_is_within_small_claims_limit,
+        "feat_claim_amount_is_within_small_claims_limit": (
+            vector.claim_amount_is_within_small_claims_limit
+        ),
         "feat_damages_are_ongoing": vector.damages_are_ongoing,
         "feat_damages_have_third_party_valuation": vector.damages_have_third_party_valuation,
         "feat_damages_include_lost_wages": vector.damages_include_lost_wages,
@@ -231,7 +233,9 @@ def feature_vector_to_raw_row(vector: FeatureVector) -> dict[str, Any]:
         "feat_damages_include_property_value_loss": vector.damages_include_property_value_loss,
         "feat_gave_opportunity_to_cure": vector.gave_opportunity_to_cure,
         "feat_has_signed_contract_attached": vector.has_signed_contract_attached,
-        "feat_opposing_party_filed_response_documents": vector.opposing_party_filed_response_documents,
+        "feat_opposing_party_filed_response_documents": (
+            vector.opposing_party_filed_response_documents
+        ),
         "feat_sent_certified_mail": vector.sent_certified_mail,
         "feat_sent_written_demand_letter": vector.sent_written_demand_letter,
         "feat_user_seeks_court_costs": vector.user_seeks_court_costs,
