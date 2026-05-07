@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
 
-import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from api.dependencies import app_state
 from api.schemas import (
@@ -21,10 +19,10 @@ from api.schemas import (
     CounterfactualItem,
     CounterfactualRequest,
     CounterfactualResponse,
-    FrontendAnalyzeRequest,
-    FrontendAnalyzeResponse,
-    FrontendSignals,
     HealthResponse,
+    LexRatioAnalysisRequest,
+    LexRatioAnalysisResponse,
+    LexRatioSignals,
     PredictionRequest,
     PredictionResponse,
     RootResponse,
@@ -33,13 +31,10 @@ from api.schemas import (
     SimilarCaseResponse,
 )
 from data.schemas.case import ProcessedCase
-from features.config import FeaturesConfig
-from features.prompts import build_similarity_advice_prompt
 from features.schema import FeatureVector
+from features.prompts import build_similarity_advice_prompt
 
 logger = logging.getLogger(__name__)
-APP_VERSION = "0.1.0"
-LEXRATIO_HTML = Path(__file__).resolve().parent.parent / "lexratio.html"
 
 
 @asynccontextmanager
@@ -56,20 +51,38 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Litigation Outcome Predictor",
     description="Predicts small claims court case outcomes using ML",
-    version=APP_VERSION,
+    version="0.1.0",
     lifespan=lifespan,
 )
+
+# Add CORS middleware to allow frontend requests from everywhere (development friendly)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+        "http://127.0.0.1:5173",
+        "https://*.vercel.app",
+        "*",  # Allow all origins in development
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Mount static files directory for LexRatio frontend
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    logger.info("Static files mounted from %s", static_dir)
 
-@app.get("/", response_model=RootResponse)
-async def root() -> RootResponse:
+
+@app.get("/api/", response_model=RootResponse)
+async def api_root() -> RootResponse:
+    """API root endpoint — returns JSON."""
     return RootResponse(
         message="Welcome to the Litigation Outcome Predictor API.",
         service="litigation-outcome-pipeline",
@@ -77,18 +90,49 @@ async def root() -> RootResponse:
     )
 
 
-@app.get("/lexratio", response_class=FileResponse, include_in_schema=False)
-async def lexratio_frontend() -> FileResponse:
-    if not LEXRATIO_HTML.exists():
-        raise HTTPException(status_code=404, detail="lexratio.html not found")
-    return FileResponse(LEXRATIO_HTML)
+@app.get("/")
+async def root():
+    """Serve the LexRatio UI as the homepage."""
+    from fastapi.responses import FileResponse
+
+    # Try root directory first, then static
+    root_dir = Path(__file__).parent.parent
+    lexratio_file = root_dir / "lexratio.html"
+    if not lexratio_file.exists():
+        static_dir = Path(__file__).parent / "static"
+        lexratio_file = static_dir / "lexratio.html"
+
+    if lexratio_file.exists():
+        return FileResponse(lexratio_file, media_type="text/html")
+
+    # Fallback to JSON if HTML not found
+    return RootResponse(
+        message="Welcome to the Litigation Outcome Predictor API.",
+        service="litigation-outcome-pipeline",
+        docs="/docs",
+    )
+
+
+@app.get("/lexratio")
+async def lexratio_ui():
+    """Serve the LexRatio UI (also available at root path)."""
+    from fastapi.responses import FileResponse
+
+    root_dir = Path(__file__).parent.parent
+    lexratio_file = root_dir / "lexratio.html"
+    if not lexratio_file.exists():
+        static_dir = Path(__file__).parent / "static"
+        lexratio_file = static_dir / "lexratio.html"
+    if not lexratio_file.exists():
+        raise HTTPException(status_code=404, detail="LexRatio UI not available")
+    return FileResponse(lexratio_file, media_type="text/html")
 
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse(
         status="healthy",
-        version=APP_VERSION,
+        version="0.1.0",
         models_loaded=app_state.models_loaded,
         classifier_loaded=app_state.classifier_loaded,
         regressor_loaded=app_state.regressor_loaded,
@@ -109,29 +153,6 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
     return await asyncio.to_thread(_run_prediction_sync, feature_vector, request.case_number)
 
 
-@app.post("/analyze", response_model=FrontendAnalyzeResponse)
-async def analyze_case(request: FrontendAnalyzeRequest) -> FrontendAnalyzeResponse:
-    """Frontend-friendly analysis endpoint for lexratio.html."""
-    if not app_state.models_loaded:
-        raise HTTPException(status_code=503, detail="Models not loaded")
-    if app_state.feature_extractor is None:
-        raise HTTPException(status_code=503, detail="Feature extractor not initialized")
-
-    case_text = _build_frontend_case_text(request)
-    case = ProcessedCase(
-        case_number="LEXRATIO",
-        case_title="LexRatio frontend submission",
-        cause_of_action=request.claim_category,
-        filing_date=date.today(),
-        full_text=case_text,
-        claim_amount=request.claim_amount,
-    )
-    feature_vector = await app_state.feature_extractor.extract(case)
-    prediction = await asyncio.to_thread(_run_prediction_sync, feature_vector, "LEXRATIO")
-
-    return _build_frontend_analysis_response(request, feature_vector, prediction)
-
-
 @app.post("/predict/batch", response_model=BatchPredictionResponse)
 async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionResponse:
     """Batch prediction for multiple cases."""
@@ -150,112 +171,6 @@ async def predict_batch(request: BatchPredictionRequest) -> BatchPredictionRespo
     return BatchPredictionResponse(predictions=predictions, total=len(predictions))
 
 
-def _outcome_rank(outcome: str | None) -> int:
-    ranking = {
-        "plaintiff_win": 4,
-        "settled": 3,
-        "dismissed": 2,
-        "defendant_win": 1,
-    }
-    return ranking.get(outcome, 0)
-
-
-def _select_best_similar_cases(
-    items: list[SimilarCaseItem], max_best: int = 3
-) -> list[SimilarCaseItem]:
-    return sorted(
-        items,
-        key=lambda item: (_outcome_rank(item.outcome), item.similarity_score),
-        reverse=True,
-    )[:max_best]
-
-
-async def _build_similarity_advice(
-    case_text: str, best_cases: list[SimilarCaseItem]
-) -> tuple[str, str]:
-    config = FeaturesConfig()
-    if not best_cases:
-        return (
-            "No strong historical cases were found for comparison.",
-            "Review evidence strength and documentation,"
-            " and consider whether additional proof would make the claim clearer.",
-        )
-
-    if not config.llm_api_key:
-        return _fallback_similarity_advice(best_cases)
-
-    retrieved_cases = [
-        {
-            "case_number": case.case_number,
-            "case_title": case.case_title,
-            "outcome": case.outcome or "unknown",
-            "similarity_score": case.similarity_score,
-            "case_snippet": case.case_snippet or "",
-        }
-        for case in best_cases
-    ]
-
-    messages = build_similarity_advice_prompt(case_text, retrieved_cases)
-    body = {
-        "model": config.llm_model,
-        "messages": messages,
-        "temperature": config.llm_temperature,
-        "max_tokens": config.llm_max_tokens,
-    }
-    base_url = config.llm_base_url or "https://api.openai.com/v1"
-    headers = {
-        "Authorization": f"Bearer {config.llm_api_key}",
-        "Content-Type": "application/json",
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=config.llm_timeout) as client:
-            resp = await client.post(f"{base_url}/chat/completions", json=body, headers=headers)
-            resp.raise_for_status()
-            content = resp.json()["choices"][0]["message"]["content"]
-
-        parsed = _parse_advice_response(content)
-        return parsed.get(
-            "comparison_insights", "Comparison analysis was unavailable."
-        ), parsed.get(
-            "advice",
-            "Focus on improving the strength of the "
-            "evidence and the clarity of the claim presentation.",
-        )
-    except Exception:
-        return _fallback_similarity_advice(best_cases)
-
-
-def _parse_advice_response(content: str) -> dict[str, str]:
-    text = content.strip()
-    if text.startswith("```"):
-        lines = text.split("\n")
-        text = "\n".join(lines[1:-1])
-    try:
-        return json.loads(text)
-    except Exception:
-        return {
-            "comparison_insights": "Could not parse the model response cleanly.",
-            "advice": "Review the retrieved historical "
-            "cases and focus on clearer evidence and contract documentation.",
-        }
-
-
-def _fallback_similarity_advice(best_cases: list[SimilarCaseItem]) -> tuple[str, str]:
-    winner = best_cases[0]
-    outcome = winner.outcome or "unknown"
-    summary = (
-        f"The most successful retrieved case is {winner.case_number} ({winner.case_title}) "
-        f"with outcome {outcome}."
-    )
-    advice = (
-        "The historical cases that did best tend to have strong evidence, clear documentation, "
-        "and a well-articulated timeline. Focus on making your"
-        " claim more concrete and tied to specific facts."
-    )
-    return summary, advice
-
-
 @app.post("/similar", response_model=SimilarCaseResponse)
 async def similar_cases(request: SimilarCaseRequest) -> SimilarCaseResponse:
     """Find similar historical cases."""
@@ -270,29 +185,16 @@ async def similar_cases(request: SimilarCaseRequest) -> SimilarCaseResponse:
             case_title=r.case_title,
             similarity_score=r.score,
             outcome=r.metadata.get("outcome"),
-            case_snippet=r.metadata.get("case_snippet"),
         )
         for r in results
     ]
 
-    best_cases = _select_best_similar_cases(items)
-    comparison_insights, advice = await _build_similarity_advice(request.case_text, best_cases)
-
-    if items:
-        outcomes = [i.outcome for i in items if i.outcome]
-        explanation = f"Found {len(items)} similar cases."
-        if outcomes:
-            explanation += f" Most common outcome: {max(set(outcomes), key=outcomes.count)}."
-    else:
-        explanation = "No similar cases found above the similarity threshold."
+    explanation = app_state.case_index.explain(results)
 
     return SimilarCaseResponse(
         query_summary=request.case_text[:200],
         similar_cases=items,
-        best_cases=best_cases,
         explanation=explanation,
-        comparison_insights=comparison_insights,
-        advice=advice,
     )
 
 
@@ -334,6 +236,63 @@ async def counterfactual(request: CounterfactualRequest) -> CounterfactualRespon
     )
 
 
+@app.post("/api/analyze-lexratio", response_model=LexRatioAnalysisResponse)
+async def analyze_lexratio(request: LexRatioAnalysisRequest) -> LexRatioAnalysisResponse:
+    """Analyze a small claims case for LexRatio frontend."""
+    if not app_state.models_loaded:
+        raise HTTPException(status_code=503, detail="Models not loaded")
+    if app_state.feature_extractor is None:
+        raise HTTPException(status_code=503, detail="Feature extractor not initialized")
+
+    # Build a case from the request
+    case = ProcessedCase(
+        case_number="LEXRATIO_UNKNOWN",
+        case_title=request.case_title or "Small Claims Case",
+        cause_of_action=request.cause_of_action or "other",
+        filing_date=date.today(),
+        full_text=request.case_text,
+        claim_amount=request.claim_amount,
+    )
+
+    # Extract features and run prediction
+    feature_vector = await app_state.feature_extractor.extract(case)
+    prediction = await asyncio.to_thread(_run_prediction_sync, feature_vector, None)
+
+    # Analyze case text for signals
+    text_lower = request.case_text.lower()
+    signals = LexRatioSignals(
+        has_written_evidence=_detect_written_evidence(text_lower),
+        sent_demand_letter=_detect_demand_letter(text_lower),
+        has_contract=_detect_contract(text_lower),
+        defendant_responded=_detect_defendant_response(text_lower),
+        has_witnesses=_detect_witnesses(text_lower),
+        damages_itemized=_detect_itemized_damages(text_lower),
+    )
+
+    # Generate strengths and weaknesses based on signals
+    strengths = _generate_strengths(signals, prediction.win_probability)
+    weaknesses = _generate_weaknesses(signals, prediction.win_probability)
+
+    # Generate verdict summary
+    verdict = _generate_verdict_summary(
+        prediction.win_probability, prediction.expected_monetary_outcome
+    )
+
+    # Generate advice
+    advice = _generate_advice(signals, prediction.win_probability, strengths, weaknesses)
+
+    return LexRatioAnalysisResponse(
+        win_probability=int(round(prediction.win_probability * 100)),
+        expected_award=prediction.expected_monetary_outcome,
+        confidence=prediction.confidence,
+        verdict_summary=verdict,
+        strengths=strengths,
+        weaknesses=weaknesses,
+        advice=advice,
+        signals=signals,
+    )
+
+
 def _build_processed_case(request: PredictionRequest) -> ProcessedCase:
     return ProcessedCase(
         case_number=request.case_number or "UNKNOWN",
@@ -363,6 +322,7 @@ def _run_prediction_sync(vector: FeatureVector, case_number: str | None) -> Pred
     import pandas as pd
 
     model_input = pd.DataFrame([vector.to_model_input()])
+
     win_prob = float(app_state.classifier.predict_proba(model_input)[0, 1])
     monetary = float(app_state.regressor.predict(model_input)[0])
 
@@ -381,128 +341,151 @@ def _run_prediction_sync(vector: FeatureVector, case_number: str | None) -> Pred
     )
 
 
-def _build_frontend_case_text(request: FrontendAnalyzeRequest) -> str:
-    parts = [request.case_text.strip()]
-    if request.evidence_text:
-        parts.append(f"Evidence: {request.evidence_text.strip()}")
-    if request.prior_steps_text:
-        parts.append(f"Prior steps: {request.prior_steps_text.strip()}")
-    return "\n\n".join(parts)
+def _detect_written_evidence(text: str) -> bool | None:
+    """Check for mentions of written evidence."""
+    keywords = [
+        "contract",
+        "receipt",
+        "email",
+        "text message",
+        "invoice",
+        "letter",
+        "document",
+        "agreement",
+    ]
+    return any(kw in text for kw in keywords) if text else None
 
 
-def _build_frontend_analysis_response(
-    request: FrontendAnalyzeRequest,
-    vector: FeatureVector,
-    prediction: PredictionResponse,
-) -> FrontendAnalyzeResponse:
-    strengths: list[str] = []
-    weaknesses: list[str] = []
+def _detect_demand_letter(text: str) -> bool | None:
+    """Check for demand letter or notice."""
+    keywords = ["demand letter", "sent demand", "certified mail", "notice", "demand for payment"]
+    return any(kw in text for kw in keywords) if text else None
 
-    if vector.documentary_evidence:
-        strengths.append(
-            "You appear to have documentary evidence that can support your version of events."
+
+def _detect_contract(text: str) -> bool | None:
+    """Check for contract mention."""
+    keywords = ["contract", "agreement", "terms", "signed"]
+    return any(kw in text for kw in keywords) if text else None
+
+
+def _detect_defendant_response(text: str) -> bool | None:
+    """Check for defendant response."""
+    keywords = [
+        "defendant respond",
+        "defendant said",
+        "they admitted",
+        "they denied",
+        "defendant claim",
+        "in response",
+    ]
+    return any(kw in text for kw in keywords) if text else None
+
+
+def _detect_witnesses(text: str) -> bool | None:
+    """Check for witnesses."""
+    keywords = ["witness", "witnessed", "saw", "observed", "present", "testif"]
+    return any(kw in text for kw in keywords) if text else None
+
+
+def _detect_itemized_damages(text: str) -> bool | None:
+    """Check for itemized damages."""
+    keywords = ["itemized", "$", "amount", "cost", "repair", "replacement"]
+    return any(kw in text for kw in keywords) if text else None
+
+
+def _generate_strengths(signals: LexRatioSignals, win_prob: float) -> list[str]:
+    """Generate case strengths based on signals."""
+    strengths = []
+
+    if signals.has_written_evidence:
+        strengths.append("Documentary evidence supports claim")
+
+    if signals.has_contract:
+        strengths.append("Written contract establishes obligations")
+
+    if signals.sent_demand_letter:
+        strengths.append("Proper notice provided via demand letter")
+
+    if signals.has_witnesses:
+        strengths.append("Corroborating witness testimony available")
+
+    if signals.damages_itemized:
+        strengths.append("Damages clearly itemized and documented")
+
+    if not strengths and win_prob > 0.5:
+        strengths.append("Reasonable claim with supportable facts")
+
+    return strengths[:4]  # Return up to 4
+
+
+def _generate_weaknesses(signals: LexRatioSignals, win_prob: float) -> list[str]:
+    """Generate case weaknesses based on signals."""
+    weaknesses = []
+
+    if not signals.has_written_evidence:
+        weaknesses.append("Limited documentary evidence")
+
+    if not signals.has_contract:
+        weaknesses.append("No written agreement to reference")
+
+    if not signals.sent_demand_letter:
+        weaknesses.append("No formal demand made before filing")
+
+    if not signals.defendant_responded:
+        weaknesses.append("Lack of defendant's position on record")
+
+    if win_prob < 0.5 and not signals.damages_itemized:
+        weaknesses.append("Damages not clearly quantified")
+
+    return weaknesses[:4]  # Return up to 4
+
+
+def _generate_verdict_summary(win_prob: float, expected_award: float) -> str:
+    """Generate a plain-English summary of the verdict."""
+    if win_prob >= 0.75:
+        outcome = "likely to prevail"
+    elif win_prob >= 0.6:
+        outcome = "moderately likely to prevail"
+    elif win_prob >= 0.4:
+        outcome = "could prevail with strong presentation"
+    else:
+        outcome = "faces significant challenges"
+
+    award_str = f"with an expected recovery of ${int(expected_award)}" if expected_award > 0 else ""
+
+    return f"Claimant is {outcome} {award_str}.".strip()
+
+
+def _generate_advice(
+    signals: LexRatioSignals, win_prob: float, strengths: list[str], weaknesses: list[str]
+) -> str:
+    """Generate counsel advice."""
+    advice_parts = []
+
+    if win_prob >= 0.65:
+        advice_parts.append(
+            "Case presents favorable prospects. Focus on presenting"
+            "evidence clearly and concisely at hearing."
         )
-    elif vector.documentary_evidence is False:
-        weaknesses.append(
-            "The claim may be harder"
-            " to prove without documents, receipts, photos, or written messages."
-        )
-
-    if vector.contract_present:
-        strengths.append("A contract or agreement is a strong anchor for a small claims dispute.")
-    elif vector.contract_present is False and request.claim_category in {
-        "unpaid_debt",
-        "service_dispute",
-        "breach_of_contract",
-    }:
-        weaknesses.append(
-            "This dispute may turn on oral promises unless you can show clear written terms."
-        )
-
-    if (vector.evidence_strength or 0) >= 4:
-        strengths.append("The factual record appears comparatively strong and well-supported.")
-    elif vector.evidence_strength is not None and vector.evidence_strength <= 2:
-        weaknesses.append("The evidentiary record looks thin and may invite credibility disputes.")
-
-    if vector.prior_attempts_to_resolve:
-        strengths.append("Prior efforts to resolve the dispute can help show reasonableness.")
-    elif vector.prior_attempts_to_resolve is False:
-        weaknesses.append(
-            "Bring proof that you tried to resolve the dispute before filing, if available."
-        )
-
-    if (vector.witness_count or 0) > 0:
-        strengths.append("Witness support may reinforce your timeline and damages theory.")
-
-    if vector.timeline_clarity is not None and vector.timeline_clarity <= 2:
-        weaknesses.append("The timeline may need to be presented more clearly for the judge.")
-
-    if vector.counterclaim_present:
-        weaknesses.append(
-            "There may be defenses or counterclaims that reduce recovery or complicate the hearing."
-        )
-
-    if not strengths:
-        strengths.append(
-            "The claim has enough stated detail to support a structured presentation at hearing."
-        )
-    if not weaknesses:
-        weaknesses.append(
-            "The main risk is whether"
-            " the available proof fully matches the amount you are claiming."
-        )
-
-    strengths = strengths[:4]
-    weaknesses = weaknesses[:4]
-
-    win_probability = int(round(prediction.win_probability * 100))
-    expected_award = max(0.0, prediction.expected_monetary_outcome)
-    signals = FrontendSignals(
-        has_written_evidence=vector.documentary_evidence,
-        sent_demand_letter=vector.prior_attempts_to_resolve,
-        has_contract=vector.contract_present,
-        defendant_responded=None,
-        has_witnesses=(vector.witness_count > 0) if vector.witness_count is not None else None,
-        damages_itemized=(request.claim_amount is not None) if request.claim_amount else None,
-    )
-
-    claim_label = (request.claim_category or "small claims dispute").replace("_", " ")
-    if win_probability >= 65:
-        verdict_summary = (
-            f"This {claim_label} appears"
-            " more likely than not to succeed if the supporting proof is presented clearly."
-        )
-    elif win_probability >= 40:
-        verdict_summary = (
-            f"This {claim_label} looks contestable,"
-            " with the outcome likely to depend on documentation and credibility."
+    elif win_prob >= 0.4:
+        advice_parts.append(
+            "Case has merit but requires strong presentation. Organize evidence"
+            "logically and address potential counterarguments."
         )
     else:
-        verdict_summary = (
-            f"This {claim_label} currently "
-            "appears difficult to win without stronger proof or a clearer damages showing."
-        )
-
-    advice_parts = [
-        "Organize your evidence in date order and tie each document "
-        "to a specific fact you need the judge to accept.",
-        "Prepare a short hearing narrative"
-        " covering the agreement, the breach or harm, and the exact amount requested.",
-    ]
-    if vector.prior_attempts_to_resolve is False:
         advice_parts.append(
-            "If possible, bring a demand letter or other "
-            "proof that you tried to resolve the dispute before hearing."
+            "Consider settlement discussions given case weaknesses. If proceeding,"
+            "emphasize strongest points and address gaps in evidence."
         )
-    advice = " ".join(advice_parts[:3])
 
-    return FrontendAnalyzeResponse(
-        win_probability=win_probability,
-        expected_award=round(expected_award, 2),
-        confidence=prediction.confidence,
-        verdict_summary=verdict_summary,
-        strengths=strengths,
-        weaknesses=weaknesses,
-        advice=advice,
-        signals=signals,
-    )
+    if not s.sent_demand_letter:
+        advice_parts.append(
+            "Consider whether prior demand letter would have strengthened negotiating position."
+        )
+
+    if not signals.damages_itemized:
+        advice_parts.append(
+            "Clearly itemize all damages with supporting receipts and documentation."
+        )
+
+    return " ".join(advice_parts)
