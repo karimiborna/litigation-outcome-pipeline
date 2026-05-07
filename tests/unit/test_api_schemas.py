@@ -9,7 +9,9 @@ from api.schemas import (
     PredictionRequest,
     PredictionResponse,
     RootResponse,
+    SimilarCaseItem,
     SimilarCaseRequest,
+    SimilarCaseResponse,
 )
 
 
@@ -59,6 +61,25 @@ class TestSimilarCaseRequest:
             SimilarCaseRequest(case_text="Some case text here.", top_k=0)
         with pytest.raises(ValidationError):
             SimilarCaseRequest(case_text="Some case text here.", top_k=50)
+
+
+class TestSimilarCaseResponse:
+    def test_optional_advice_fields(self):
+        item = SimilarCaseItem(
+            case_number="CSM0001",
+            case_title="Test Case",
+            similarity_score=0.82,
+        )
+        r = SimilarCaseResponse(
+            query_summary="Test query",
+            similar_cases=[item],
+            best_cases=[item],
+            explanation="Found similar cases.",
+            comparison_insights="The top cases were stronger on documentation.",
+            advice="Gather stronger receipts and contracts.",
+        )
+        assert r.best_cases[0].case_number == "CSM0001"
+        assert r.advice.startswith("Gather stronger")
 
 
 class TestBatchPredictionRequest:

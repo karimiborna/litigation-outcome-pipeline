@@ -220,7 +220,7 @@ async def _build_similarity_advice(
         ), parsed.get(
             "advice",
             "Focus on improving the strength of the evidence"
-             " and the clarity of the claim presentation.",
+            " and the clarity of the claim presentation.",
         )
     except Exception:
         return _fallback_similarity_advice(best_cases)
@@ -237,7 +237,7 @@ def _parse_advice_response(content: str) -> dict[str, str]:
         return {
             "comparison_insights": "Could not parse the model response cleanly.",
             "advice": "Review the retrieved historical cases and"
-             " focus on clearer evidence and contract documentation.",
+            " focus on clearer evidence and contract documentation.",
         }
 
 
@@ -405,7 +405,7 @@ def _build_frontend_analysis_response(
     elif vector.documentary_evidence is False:
         weaknesses.append(
             "The claim may be harder to"
-             " prove without documents, receipts, photos, or written messages."
+            " prove without documents, receipts, photos, or written messages."
         )
 
     if vector.contract_present:
@@ -479,14 +479,14 @@ def _build_frontend_analysis_response(
 
     advice_parts = [
         "Organize your evidence in date order"
-         " and tie each document to a specific fact you need the judge to accept.",
+        " and tie each document to a specific fact you need the judge to accept.",
         "Prepare a short hearing narrative "
         "covering the agreement, the breach or harm, and the exact amount requested.",
     ]
     if vector.prior_attempts_to_resolve is False:
         advice_parts.append(
             "If possible, bring a demand"
-             " letter or other proof that you tried to resolve the dispute before hearing."
+            " letter or other proof that you tried to resolve the dispute before hearing."
         )
     advice = " ".join(advice_parts[:3])
 
