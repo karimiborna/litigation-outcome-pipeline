@@ -17,8 +17,12 @@ class DummyEmbeddingModel:
         vectors = []
         for text in texts:
             base = np.array(
-                [len(text), text.count("contract"), text.count("plaintiff")
-                 + text.count("defendant"), 1],
+                [
+                    len(text),
+                    text.count("contract"),
+                    text.count("plaintiff") + text.count("defendant"),
+                    1,
+                ],
                 dtype=np.float32,
             )
             norm = np.linalg.norm(base)
@@ -27,8 +31,12 @@ class DummyEmbeddingModel:
 
     def embed(self, text: str) -> np.ndarray:
         vector = np.array(
-            [len(text), text.count("contract")
-             , text.count("plaintiff") + text.count("defendant"), 1],
+            [
+                len(text),
+                text.count("contract"),
+                text.count("plaintiff") + text.count("defendant"),
+                1,
+            ],
             dtype=np.float32,
         )
         norm = np.linalg.norm(vector)

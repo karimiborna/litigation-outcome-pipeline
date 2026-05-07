@@ -88,7 +88,8 @@ class AppState:
 
         if not index_file.exists() or not metadata_file.exists():
             logger.info(
-                "No retrieval index found at %s — retrieval will be unavailable", index_path)
+                "No retrieval index found at %s — retrieval will be unavailable", index_path
+            )
             self.case_index = None
             return
 
