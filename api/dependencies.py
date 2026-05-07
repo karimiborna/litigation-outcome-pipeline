@@ -89,9 +89,7 @@ class AppState:
 
         self.counterfactual_analyzer = CounterfactualAnalyzer(self.classifier, self.regressor)
         self.models_loaded = True
-        logger.info(
-            "Production classifier and regressor ready (MLflow: %s)", config.tracking_uri
-        )
+        logger.info("Production classifier and regressor ready (MLflow: %s)", config.tracking_uri)
 
     def load_feature_extractor(self, config: FeaturesConfig | None = None) -> None:
         try:

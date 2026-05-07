@@ -7,6 +7,7 @@ OBJC_DISABLE_INITIALIZE_FORK_SAFETY at process startup; setting it from Python
 is normally too late, but `setdefault` here covers cases where Python re-execs
 or where a teammate launches uvicorn from an editor without the wrapper script.
 """
+
 from __future__ import annotations
 
 import os

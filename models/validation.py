@@ -68,9 +68,7 @@ def smoke_predict(classifier: Any, regressor: Any) -> None:
         )
     win_prob = float(proba[0, 1])
     if math.isnan(win_prob) or not (0.0 <= win_prob <= 1.0):
-        raise ModelValidationError(
-            f"classifier returned out-of-range win probability: {win_prob}"
-        )
+        raise ModelValidationError(f"classifier returned out-of-range win probability: {win_prob}")
 
     monetary = float(regressor.predict(row)[0])
     if not math.isfinite(monetary):
