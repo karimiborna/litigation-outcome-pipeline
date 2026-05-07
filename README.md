@@ -9,6 +9,8 @@ Beyond prediction, the system provides two interpretability modules:
 - **Similar case retrieval** — embeds case text with sentence-transformers, builds a FAISS vector index, and returns the most similar historical cases to ground explanations in real examples
 - **Counterfactual analysis** — perturbs individual features and re-runs predictions to show how specific changes (e.g., "what if the plaintiff had stronger evidence?") would shift the outcome
 
+https://github.com/user-attachments/assets/7c09d6a5-ea8d-41f8-8a96-1ce87001f334
+
 The full system is containerized with Docker, deployed to AWS ECS via Terraform, and automated with GitHub Actions CI/CD.
 
 ## Architecture
@@ -328,6 +330,12 @@ The MLflow UI at `http://35.208.251.175:5000` shows all experiments, metrics, an
 The retrieval module uses `sentence-transformers` (default model: `all-MiniLM-L6-v2`) to embed case text into dense vectors, then builds a FAISS `IndexFlatIP` (inner product / cosine similarity) index over all historical cases.
 
 Given a new case, it returns the top-K most similar historical cases with similarity scores. Results are filtered by a configurable similarity threshold (default: 0.3). The index persists to disk at `data/retrieval_index/` and needs to be rebuilt when new historical data is added.
+
+Build the index from local processed case text with:
+
+```bash
+python scripts/build_retrieval_index.py
+```
 
 ### Counterfactual Analysis
 

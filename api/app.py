@@ -189,13 +189,7 @@ async def similar_cases(request: SimilarCaseRequest) -> SimilarCaseResponse:
         for r in results
     ]
 
-    if items:
-        outcomes = [i.outcome for i in items if i.outcome]
-        explanation = f"Found {len(items)} similar cases."
-        if outcomes:
-            explanation += f" Most common outcome: {max(set(outcomes), key=outcomes.count)}."
-    else:
-        explanation = "No similar cases found above the similarity threshold."
+    explanation = app_state.case_index.explain(results)
 
     return SimilarCaseResponse(
         query_summary=request.case_text[:200],

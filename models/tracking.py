@@ -145,8 +145,12 @@ def transition_model_stage(
 
 
 def load_production_model(model_name: str, config: MLflowConfig | None = None) -> Any:
-    """Load the Production-stage model from the registry."""
+    """Load the Production-stage model from the registry, or a specific version."""
     config = config or MLflowConfig()
     mlflow.set_tracking_uri(config.tracking_uri)
-    model_uri = f"models:/{model_name}/Production"
+    # Support both "model-name" (uses Production stage) and "model-name/N" (specific version)
+    if "/" in model_name:
+        model_uri = f"models:/{model_name}"
+    else:
+        model_uri = f"models:/{model_name}/Production"
     return mlflow.sklearn.load_model(model_uri)

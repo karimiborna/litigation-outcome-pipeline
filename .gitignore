@@ -64,3 +64,5 @@ htmlcov/
 
 # Notebook checkpoints (keep .ipynb source tracked)
 .ipynb_checkpoints/
+mlflow.db
+ruff_output.txt

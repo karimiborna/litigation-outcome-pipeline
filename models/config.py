@@ -32,8 +32,8 @@ class MLflowConfig(BaseSettings):
     classifier_experiment: str = "litigation-classifier"
     regressor_experiment: str = "litigation-regressor"
 
-    classifier_model_name: str = "litigation-win-classifier"
-    regressor_model_name: str = "litigation-monetary-regressor"
+    classifier_model_name: str = "litigation-win-classifier/production"
+    regressor_model_name: str = "litigation-monetary-regressor/production"
 
     @property
     def effective_registry_uri(self) -> str:
