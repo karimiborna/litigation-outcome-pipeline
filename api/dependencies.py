@@ -5,15 +5,15 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from retrieval.config import RetrievalConfig
-
 from counterfactual.analyzer import CounterfactualAnalyzer
 from features.config import FeaturesConfig
 from features.extraction import FeatureExtractor
 from models.config import MLflowConfig
-from models.tracking import init_mlflow, load_production_model
-from models.validation import ModelValidationError, validate_all
-from retrieval.index import CaseIndex
+from models.tracking import load_production_model
+from retrieval.config import RetrievalConfig
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 

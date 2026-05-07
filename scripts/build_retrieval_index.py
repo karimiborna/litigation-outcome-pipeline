@@ -7,7 +7,6 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from retrieval.config import RetrievalConfig
-
 from retrieval.index import CaseIndex
 
 
