@@ -246,11 +246,15 @@ def feature_vector_to_raw_row(vector: FeatureVector) -> dict[str, Any]:
 
 
 def feature_vector_to_model_frame(vector: FeatureVector) -> pd.DataFrame:
-    """Convert one API feature vector to a validated model matrix row."""
+    """Convert one API feature vector to a model matrix row.
+
+    Only ``feat_claim_category`` is strictly required — without it, the one-hot
+    encoding silently produces an all-zero category vector. Other ``feat_*``
+    fields may be NaN; XGBoost handles missing values natively.
+    """
     raw = pd.DataFrame([feature_vector_to_raw_row(vector)])
-    missing_values = [col for col in RAW_MODEL_FEATURE_COLUMNS if raw[col].isna().any()]
-    if missing_values:
-        raise ValueError(f"Missing required inference features: {missing_values}")
+    if raw["feat_claim_category"].isna().any():
+        raise ValueError("Missing required inference features: ['feat_claim_category']")
 
     x, _ = preprocess_feature_frame(raw, drop_missing=False)
     return x

@@ -36,13 +36,13 @@ def _row(**overrides):
     return row
 
 
-def test_classifier_dataset_drops_missing_targets_and_features() -> None:
+def test_classifier_dataset_drops_missing_targets_only() -> None:
     df = pd.DataFrame(
         [
             _row(label_outcome="plaintiff_win"),
             _row(label_outcome="dismissed"),
             _row(label_outcome=None),
-            _row(feat_monetary_amount_claimed=None),
+            _row(feat_monetary_amount_claimed=None, label_outcome="plaintiff_win"),
         ]
     )
 
@@ -50,27 +50,28 @@ def test_classifier_dataset_drops_missing_targets_and_features() -> None:
 
     assert prepared.raw_rows == 4
     assert prepared.target_rows == 3
-    assert prepared.model_rows == 2
+    # XGBoost handles NaN natively — feature rows are no longer dropped.
+    assert prepared.model_rows == 3
     assert prepared.dropped_target_rows == 1
-    assert prepared.dropped_feature_rows == 1
-    assert prepared.y.tolist() == [1, 0]
+    assert prepared.dropped_feature_rows == 0
+    assert prepared.y.tolist() == [1, 0, 1]
     assert tuple(prepared.x.columns) == MODEL_FEATURE_COLUMNS
-    assert not prepared.x.isna().any().any()
 
 
-def test_regressor_dataset_drops_missing_targets_and_features() -> None:
+def test_regressor_dataset_drops_missing_targets_only() -> None:
     df = pd.DataFrame(
         [
             _row(label_total_awarded=800.0),
             _row(label_total_awarded=None),
-            _row(feat_plaintiff_count=None),
+            _row(feat_plaintiff_count=None, label_total_awarded=800.0),
         ]
     )
 
     prepared = prepare_regressor_dataset(df)
 
-    assert prepared.model_rows == 1
-    assert prepared.y.tolist() == [800.0]
+    # XGBoost handles NaN natively — feature rows are no longer dropped.
+    assert prepared.model_rows == 2
+    assert prepared.y.tolist() == [800.0, 800.0]
     assert tuple(prepared.x.columns) == MODEL_FEATURE_COLUMNS
 
 
@@ -112,7 +113,11 @@ def test_feature_vector_to_model_frame_matches_training_columns() -> None:
 
     assert tuple(frame.columns) == MODEL_FEATURE_COLUMNS
     assert frame.loc[0, "feat_claim_category_unpaid_debt"] == 1.0
-    assert not frame.isna().any().any()
+    # NaN is allowed in feat_* columns the LLM didn't populate — XGBoost
+    # handles missing values natively. The categorical one-hot columns must
+    # always be populated (filled with 0.0 by reindex).
+    category_cols = [c for c in MODEL_FEATURE_COLUMNS if c.startswith("feat_claim_category_")]
+    assert not frame[category_cols].isna().any().any()
 
 
 def test_feature_vector_to_model_frame_rejects_missing_required_feature() -> None:
