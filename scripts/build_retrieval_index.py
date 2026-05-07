@@ -2,14 +2,12 @@
 from __future__ import annotations
 
 import argparse
-from retrieval.index import CaseIndex
-
 from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
 
 from retrieval.config import RetrievalConfig
-
+from retrieval.index import CaseIndex
 
 
 def infer_outcome_from_filenames(filenames: Iterable[str]) -> str | None:
