@@ -1,11 +1,12 @@
 """Unit tests for the FAISS-based retrieval index."""
 
-import numpy as np
-import pytest
 from pathlib import Path
 
+import numpy as np
+import pytest
 from retrieval.config import RetrievalConfig
-from retrieval.index import CaseIndex, FAISS_AVAILABLE
+
+from retrieval.index import FAISS_AVAILABLE, CaseIndex
 
 
 class DummyEmbeddingModel:
@@ -16,7 +17,8 @@ class DummyEmbeddingModel:
         vectors = []
         for text in texts:
             base = np.array(
-                [len(text), text.count("contract"), text.count("plaintiff") + text.count("defendant"), 1],
+                [len(text), text.count("contract"), text.count("plaintiff")
+                 + text.count("defendant"), 1],
                 dtype=np.float32,
             )
             norm = np.linalg.norm(base)
@@ -25,7 +27,8 @@ class DummyEmbeddingModel:
 
     def embed(self, text: str) -> np.ndarray:
         vector = np.array(
-            [len(text), text.count("contract"), text.count("plaintiff") + text.count("defendant"), 1],
+            [len(text), text.count("contract")
+             , text.count("plaintiff") + text.count("defendant"), 1],
             dtype=np.float32,
         )
         norm = np.linalg.norm(vector)

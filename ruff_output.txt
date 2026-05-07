@@ -1,0 +1,241 @@
+E501 Line too long (105 > 100)
+   --> api/app.py:163:101
+    |
+163 | def _select_best_similar_cases(items: list[SimilarCaseItem], max_best: int = 3) -> list[SimilarCaseItem]:
+    |                                                                                                     ^^^^^
+164 |     return sorted(
+165 |         items,
+    |
+
+E501 Line too long (126 > 100)
+   --> api/app.py:178:101
+    |
+176 |         return (
+177 |             "No strong historical cases were found for comparison.",
+178 |             "Review evidence strength and documentation, and consider whether additional proof would make the claim clearer.",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+179 |         )
+    |
+
+E501 Line too long (101 > 100)
+   --> api/app.py:215:101
+    |
+214 |         parsed = _parse_advice_response(content)
+215 |         return parsed.get("comparison_insights", "Comparison analysis was unavailable."), parsed.get(
+    |                                                                                                     ^
+216 |             "advice",
+217 |             "Focus on improving the strength of the evidence and the clarity of the claim presentation.",
+    |
+
+E501 Line too long (105 > 100)
+   --> api/app.py:217:101
+    |
+215 |         return parsed.get("comparison_insights", "Comparison analysis was unavailable."), parsed.get(
+216 |             "advice",
+217 |             "Focus on improving the strength of the evidence and the clarity of the claim presentation.",
+    |                                                                                                     ^^^^^
+218 |         )
+219 |     except Exception:
+    |
+
+E501 Line too long (120 > 100)
+   --> api/app.py:233:101
+    |
+231 |         return {
+232 |             "comparison_insights": "Could not parse the model response cleanly.",
+233 |             "advice": "Review the retrieved historical cases and focus on clearer evidence and contract documentation.",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^
+234 |         }
+    |
+
+E501 Line too long (111 > 100)
+   --> api/app.py:246:101
+    |
+244 |     advice = (
+245 |         "The historical cases that did best tend to have strong evidence, clear documentation, "
+246 |         "and a well-articulated timeline. Focus on making your claim more concrete and tied to specific facts."
+    |                                                                                                     ^^^^^^^^^^^
+247 |     )
+248 |     return summary, advice
+    |
+
+E501 Line too long (108 > 100)
+   --> api/app.py:394:101
+    |
+393 |     if vector.documentary_evidence:
+394 |         strengths.append("You appear to have documentary evidence that can support your version of events.")
+    |                                                                                                     ^^^^^^^^
+395 |     elif vector.documentary_evidence is False:
+396 |         weaknesses.append("The claim may be harder to prove without documents, receipts, photos, or written messages.")
+    |
+
+E501 Line too long (119 > 100)
+   --> api/app.py:396:101
+    |
+394 |         strengths.append("You appear to have documentary evidence that can support your version of events.")
+395 |     elif vector.documentary_evidence is False:
+396 |         weaknesses.append("The claim may be harder to prove without documents, receipts, photos, or written messages.")
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^
+397 |
+398 |     if vector.contract_present:
+    |
+
+E501 Line too long (108 > 100)
+   --> api/app.py:405:101
+    |
+403 |         "breach_of_contract",
+404 |     }:
+405 |         weaknesses.append("This dispute may turn on oral promises unless you can show clear written terms.")
+    |                                                                                                     ^^^^^^^^
+406 |
+407 |     if (vector.evidence_strength or 0) >= 4:
+    |
+
+E501 Line too long (107 > 100)
+   --> api/app.py:415:101
+    |
+413 |         strengths.append("Prior efforts to resolve the dispute can help show reasonableness.")
+414 |     elif vector.prior_attempts_to_resolve is False:
+415 |         weaknesses.append("Bring proof that you tried to resolve the dispute before filing, if available.")
+    |                                                                                                     ^^^^^^^
+416 |
+417 |     if (vector.witness_count or 0) > 0:
+    |
+
+E501 Line too long (115 > 100)
+   --> api/app.py:424:101
+    |
+423 |     if vector.counterclaim_present:
+424 |         weaknesses.append("There may be defenses or counterclaims that reduce recovery or complicate the hearing.")
+    |                                                                                                     ^^^^^^^^^^^^^^^
+425 |
+426 |     if not strengths:
+    |
+
+E501 Line too long (111 > 100)
+   --> api/app.py:427:101
+    |
+426 |     if not strengths:
+427 |         strengths.append("The claim has enough stated detail to support a structured presentation at hearing.")
+    |                                                                                                     ^^^^^^^^^^^
+428 |     if not weaknesses:
+429 |         weaknesses.append("The main risk is whether the available proof fully matches the amount you are claiming.")
+    |
+
+E501 Line too long (116 > 100)
+   --> api/app.py:429:101
+    |
+427 |         strengths.append("The claim has enough stated detail to support a structured presentation at hearing.")
+428 |     if not weaknesses:
+429 |         weaknesses.append("The main risk is whether the available proof fully matches the amount you are claiming.")
+    |                                                                                                     ^^^^^^^^^^^^^^^^
+430 |
+431 |     strengths = strengths[:4]
+    |
+
+E501 Line too long (119 > 100)
+   --> api/app.py:448:101
+    |
+446 |     if win_probability >= 65:
+447 |         verdict_summary = (
+448 |             f"This {claim_label} appears more likely than not to succeed if the supporting proof is presented clearly."
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^
+449 |         )
+450 |     elif win_probability >= 40:
+    |
+
+E501 Line too long (120 > 100)
+   --> api/app.py:452:101
+    |
+450 |     elif win_probability >= 40:
+451 |         verdict_summary = (
+452 |             f"This {claim_label} looks contestable, with the outcome likely to depend on documentation and credibility."
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^
+453 |         )
+454 |     else:
+    |
+
+E501 Line too long (121 > 100)
+   --> api/app.py:456:101
+    |
+454 |     else:
+455 |         verdict_summary = (
+456 |             f"This {claim_label} currently appears difficult to win without stronger proof or a clearer damages showing."
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^
+457 |         )
+    |
+
+E501 Line too long (118 > 100)
+   --> api/app.py:460:101
+    |
+459 |     advice_parts = [
+460 |         "Organize your evidence in date order and tie each document to a specific fact you need the judge to accept.",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^
+461 |         "Prepare a short hearing narrative covering the agreement, the breach or harm, and the exact amount requested.",
+462 |     ]
+    |
+
+E501 Line too long (120 > 100)
+   --> api/app.py:461:101
+    |
+459 |     advice_parts = [
+460 |         "Organize your evidence in date order and tie each document to a specific fact you need the judge to accept.",
+461 |         "Prepare a short hearing narrative covering the agreement, the breach or harm, and the exact amount requested.",
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^
+462 |     ]
+463 |     if vector.prior_attempts_to_resolve is False:
+    |
+
+E501 Line too long (134 > 100)
+   --> api/app.py:464:101
+    |
+462 |     ]
+463 |     if vector.prior_attempts_to_resolve is False:
+464 |         advice_parts.append("If possible, bring a demand letter or other proof that you tried to resolve the dispute before hearing.")
+    |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+465 |     advice = " ".join(advice_parts[:3])
+    |
+
+E501 Line too long (101 > 100)
+  --> api/dependencies.py:90:101
+   |
+89 |         if not index_file.exists() or not metadata_file.exists():
+90 |             logger.info("No retrieval index found at %s — retrieval will be unavailable", index_path)
+   |                                                                                                     ^
+91 |             self.case_index = None
+92 |             return
+   |
+
+E501 Line too long (115 > 100)
+  --> scripts/build_retrieval_index.py:57:101
+   |
+56 | def main() -> None:
+57 |     parser = argparse.ArgumentParser(description='Build the retrieval FAISS index from processed case text files.')
+   |                                                                                                     ^^^^^^^^^^^^^^^
+58 |     parser.add_argument(
+59 |         '--source-dir',
+   |
+
+E501 Line too long (106 > 100)
+  --> tests/unit/test_retrieval_index.py:20:101
+   |
+18 |         for text in texts:
+19 |             base = np.array(
+20 |                 [len(text), text.count("contract"), text.count("plaintiff") + text.count("defendant"), 1],
+   |                                                                                                     ^^^^^^
+21 |                 dtype=np.float32,
+22 |             )
+   |
+
+E501 Line too long (102 > 100)
+  --> tests/unit/test_retrieval_index.py:29:101
+   |
+27 |     def embed(self, text: str) -> np.ndarray:
+28 |         vector = np.array(
+29 |             [len(text), text.count("contract"), text.count("plaintiff") + text.count("defendant"), 1],
+   |                                                                                                     ^^
+30 |             dtype=np.float32,
+31 |         )
+   |
+
+Found 23 errors.

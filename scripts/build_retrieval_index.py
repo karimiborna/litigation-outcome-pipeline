@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
+
+from retrieval.config import RetrievalConfig
 
 from retrieval.index import CaseIndex
-from retrieval.config import RetrievalConfig
 
 
 def infer_outcome_from_filenames(filenames: Iterable[str]) -> str | None:
@@ -53,7 +54,8 @@ def build_case_documents(source_dir: Path) -> tuple[list[str], list[str], list[s
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description='Build the retrieval FAISS index from processed case text files.')
+    parser = argparse.ArgumentParser(
+        description='Build the retrieval FAISS index from processed case text files.')
     parser.add_argument(
         '--source-dir',
         type=Path,
