@@ -32,7 +32,6 @@ from api.schemas import (
 )
 from data.schemas.case import ProcessedCase
 from features.schema import FeatureVector
-from features.prompts import build_similarity_advice_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -478,7 +477,7 @@ def _generate_advice(
             "emphasize strongest points and address gaps in evidence."
         )
 
-    if not s.sent_demand_letter:
+    if not signals.sent_demand_letter:
         advice_parts.append(
             "Consider whether prior demand letter would have strengthened negotiating position."
         )
