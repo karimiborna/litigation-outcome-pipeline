@@ -79,7 +79,7 @@ def build_extraction_prompt(
 SIMILARITY_ADVICE_SYSTEM = (
     "You are a legal strategy assistant. Review a new small claims case and a set of historical cases "
     "that were selected for similarity. Your answer should compare the new case to the best historical cases, "
-    "identify what separates the successful cases from the current one, and give concise, practical advice." 
+    "identify what separates the successful cases from the current one, and give concise, practical advice."
     "Respond with only JSON, no markdown or extra text."
 )
 
@@ -112,8 +112,8 @@ def build_similarity_advice_prompt(
         "A new case is described above, followed by the retrieved cases. "
         "Please answer with JSON only in this format:\n"
         "{\n"
-        "  \"comparison_insights\": <brief description of how the best historical cases compare to the new case>,\n"
-        "  \"advice\": <concise practical advice for the plaintiff based on the retrieved examples>\n"
+        '  "comparison_insights": <brief description of how the best historical cases compare to the new case>,\n'
+        '  "advice": <concise practical advice for the plaintiff based on the retrieved examples>\n'
         "}\n"
     )
     user_content += "\n\n" + "\n".join(case_sections)

@@ -160,7 +160,9 @@ def _outcome_rank(outcome: str | None) -> int:
     return ranking.get(outcome, 0)
 
 
-def _select_best_similar_cases(items: list[SimilarCaseItem], max_best: int = 3) -> list[SimilarCaseItem]:
+def _select_best_similar_cases(
+    items: list[SimilarCaseItem], max_best: int = 3
+) -> list[SimilarCaseItem]:
     return sorted(
         items,
         key=lambda item: (_outcome_rank(item.outcome), item.similarity_score),
@@ -175,7 +177,8 @@ async def _build_similarity_advice(
     if not best_cases:
         return (
             "No strong historical cases were found for comparison.",
-            "Review evidence strength and documentation, and consider whether additional proof would make the claim clearer.",
+            "Review evidence strength and documentation, "
+            "and consider whether additional proof would make the claim clearer.",
         )
 
     if not config.llm_api_key:
@@ -212,9 +215,12 @@ async def _build_similarity_advice(
             content = resp.json()["choices"][0]["message"]["content"]
 
         parsed = _parse_advice_response(content)
-        return parsed.get("comparison_insights", "Comparison analysis was unavailable."), parsed.get(
+        return parsed.get(
+            "comparison_insights", "Comparison analysis was unavailable."
+        ), parsed.get(
             "advice",
-            "Focus on improving the strength of the evidence and the clarity of the claim presentation.",
+            "Focus on improving the strength of the evidence"
+             " and the clarity of the claim presentation.",
         )
     except Exception:
         return _fallback_similarity_advice(best_cases)
@@ -230,7 +236,8 @@ def _parse_advice_response(content: str) -> dict[str, str]:
     except Exception:
         return {
             "comparison_insights": "Could not parse the model response cleanly.",
-            "advice": "Review the retrieved historical cases and focus on clearer evidence and contract documentation.",
+            "advice": "Review the retrieved historical cases and"
+             " focus on clearer evidence and contract documentation.",
         }
 
 
@@ -243,7 +250,8 @@ def _fallback_similarity_advice(best_cases: list[SimilarCaseItem]) -> tuple[str,
     )
     advice = (
         "The historical cases that did best tend to have strong evidence, clear documentation, "
-        "and a well-articulated timeline. Focus on making your claim more concrete and tied to specific facts."
+        "and a well-articulated timeline. "
+        "Focus on making your claim more concrete and tied to specific facts."
     )
     return summary, advice
 
@@ -391,9 +399,14 @@ def _build_frontend_analysis_response(
     weaknesses: list[str] = []
 
     if vector.documentary_evidence:
-        strengths.append("You appear to have documentary evidence that can support your version of events.")
+        strengths.append(
+            "You appear to have documentary evidence that can support your version of events."
+        )
     elif vector.documentary_evidence is False:
-        weaknesses.append("The claim may be harder to prove without documents, receipts, photos, or written messages.")
+        weaknesses.append(
+            "The claim may be harder to"
+             " prove without documents, receipts, photos, or written messages."
+        )
 
     if vector.contract_present:
         strengths.append("A contract or agreement is a strong anchor for a small claims dispute.")
@@ -402,7 +415,9 @@ def _build_frontend_analysis_response(
         "service_dispute",
         "breach_of_contract",
     }:
-        weaknesses.append("This dispute may turn on oral promises unless you can show clear written terms.")
+        weaknesses.append(
+            "This dispute may turn on oral promises unless you can show clear written terms."
+        )
 
     if (vector.evidence_strength or 0) >= 4:
         strengths.append("The factual record appears comparatively strong and well-supported.")
@@ -412,7 +427,9 @@ def _build_frontend_analysis_response(
     if vector.prior_attempts_to_resolve:
         strengths.append("Prior efforts to resolve the dispute can help show reasonableness.")
     elif vector.prior_attempts_to_resolve is False:
-        weaknesses.append("Bring proof that you tried to resolve the dispute before filing, if available.")
+        weaknesses.append(
+            "Bring proof that you tried to resolve the dispute before filing, if available."
+        )
 
     if (vector.witness_count or 0) > 0:
         strengths.append("Witness support may reinforce your timeline and damages theory.")
@@ -421,12 +438,19 @@ def _build_frontend_analysis_response(
         weaknesses.append("The timeline may need to be presented more clearly for the judge.")
 
     if vector.counterclaim_present:
-        weaknesses.append("There may be defenses or counterclaims that reduce recovery or complicate the hearing.")
+        weaknesses.append(
+            "There may be defenses or counterclaims that reduce recovery or complicate the hearing."
+        )
 
     if not strengths:
-        strengths.append("The claim has enough stated detail to support a structured presentation at hearing.")
+        strengths.append(
+            "The claim has enough stated detail to support a structured presentation at hearing."
+        )
     if not weaknesses:
-        weaknesses.append("The main risk is whether the available proof fully matches the amount you are claiming.")
+        weaknesses.append(
+            "The main risk is whether the "
+            "available proof fully matches the amount you are claiming."
+        )
 
     strengths = strengths[:4]
     weaknesses = weaknesses[:4]
@@ -444,24 +468,26 @@ def _build_frontend_analysis_response(
 
     claim_label = (request.claim_category or "small claims dispute").replace("_", " ")
     if win_probability >= 65:
-        verdict_summary = (
-            f"This {claim_label} appears more likely than not to succeed if the supporting proof is presented clearly."
-        )
+        verdict_summary = f"This {claim_label} "
+        "appears more likely than not to succeed if the supporting proof is presented clearly."
     elif win_probability >= 40:
-        verdict_summary = (
-            f"This {claim_label} looks contestable, with the outcome likely to depend on documentation and credibility."
-        )
+        verdict_summary = f"This {claim_label} "
+        "looks contestable, with the outcome likely to depend on documentation and credibility."
     else:
-        verdict_summary = (
-            f"This {claim_label} currently appears difficult to win without stronger proof or a clearer damages showing."
-        )
+        verdict_summary = f"This {claim_label} "
+        "currently appears difficult to win without stronger proof or a clearer damages showing."
 
     advice_parts = [
-        "Organize your evidence in date order and tie each document to a specific fact you need the judge to accept.",
-        "Prepare a short hearing narrative covering the agreement, the breach or harm, and the exact amount requested.",
+        "Organize your evidence in date order"
+         " and tie each document to a specific fact you need the judge to accept.",
+        "Prepare a short hearing narrative "
+        "covering the agreement, the breach or harm, and the exact amount requested.",
     ]
     if vector.prior_attempts_to_resolve is False:
-        advice_parts.append("If possible, bring a demand letter or other proof that you tried to resolve the dispute before hearing.")
+        advice_parts.append(
+            "If possible, bring a demand"
+             " letter or other proof that you tried to resolve the dispute before hearing."
+        )
     advice = " ".join(advice_parts[:3])
 
     return FrontendAnalyzeResponse(
