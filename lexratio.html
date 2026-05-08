@@ -237,18 +237,10 @@ async function analyze() {
   document.getElementById('btn-spin').style.display = 'inline-block';
   document.getElementById('result-area').innerHTML = '';
 
-  var case_text = [
-    cat ? 'Case type: ' + cat : '',
-    amount ? 'Amount in dispute: $' + amount : '',
-    'Facts: ' + narrative,
-    evidence ? 'Evidence: ' + evidence : '',
-    steps ? 'Prior steps: ' + steps : ''
-  ].filter(Boolean).join('\n');
-
   // Determine API URL
-  var apiUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') 
-    ? 'http://localhost:8000/api/analyze-lexratio'
-    : window.location.origin + '/api/analyze-lexratio';
+  var apiUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8000/analyze'
+    : window.location.origin + '/analyze';
 
   try {
     var resp = await fetch(apiUrl, {
@@ -257,10 +249,11 @@ async function analyze() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        case_text: case_text,
-        case_title: narrative.substring(0, 100),
-        cause_of_action: cat || 'other',
-        claim_amount: parseFloat(amount) || 0
+        case_text: narrative,
+        claim_amount: amount ? parseFloat(amount) : null,
+        claim_category: cat || null,
+        evidence_text: evidence || null,
+        prior_steps_text: steps || null
       })
     });
 

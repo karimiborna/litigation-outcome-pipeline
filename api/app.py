@@ -36,6 +36,7 @@ from data.schemas.case import ProcessedCase
 from features.config import FeaturesConfig
 from features.prompts import build_similarity_advice_prompt
 from features.schema import FeatureVector
+from models.dataset import feature_vector_to_model_frame
 
 logger = logging.getLogger(__name__)
 APP_VERSION = "0.1.0"
@@ -363,9 +364,11 @@ def _build_processed_case_from_cf(request: CounterfactualRequest) -> ProcessedCa
 
 
 def _run_prediction_sync(vector: FeatureVector, case_number: str | None) -> PredictionResponse:
-    import pandas as pd
+    try:
+        model_input = feature_vector_to_model_frame(vector)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    model_input = pd.DataFrame([vector.to_model_input()])
     win_prob = float(app_state.classifier.predict_proba(model_input)[0, 1])
     monetary = float(app_state.regressor.predict(model_input)[0])
 
@@ -401,11 +404,52 @@ def _build_frontend_analysis_response(
     strengths: list[str] = []
     weaknesses: list[str] = []
 
-    if vector.documentary_evidence:
+    # Derived signals from v2 existence-based booleans
+    documentary_evidence_flags = [
+        vector.has_photos_or_physical_evidence,
+        vector.has_receipts_or_financial_records,
+        vector.has_written_communications,
+        vector.has_invoices_or_billing_records,
+        vector.has_signed_contract_attached,
+    ]
+    has_documentary_evidence: bool | None
+    if any(f is True for f in documentary_evidence_flags):
+        has_documentary_evidence = True
+    elif all(f is False for f in documentary_evidence_flags):
+        has_documentary_evidence = False
+    else:
+        has_documentary_evidence = None
+
+    evidence_strength_count = sum(
+        1
+        for f in documentary_evidence_flags
+        + [
+            vector.has_witness_statements,
+            vector.has_repair_or_replacement_estimate,
+            vector.has_expert_assessment,
+        ]
+        if f is True
+    )
+
+    prior_resolution_flags = [
+        vector.sent_written_demand_letter,
+        vector.sent_certified_mail,
+        vector.attempted_mediation,
+        vector.gave_opportunity_to_cure,
+    ]
+    prior_attempts_to_resolve: bool | None
+    if any(f is True for f in prior_resolution_flags):
+        prior_attempts_to_resolve = True
+    elif all(f is False for f in prior_resolution_flags):
+        prior_attempts_to_resolve = False
+    else:
+        prior_attempts_to_resolve = None
+
+    if has_documentary_evidence:
         strengths.append(
             "You appear to have documentary evidence that can support your version of events."
         )
-    elif vector.documentary_evidence is False:
+    elif has_documentary_evidence is False:
         weaknesses.append(
             "The claim may be harder to"
             " prove without documents, receipts, photos, or written messages."
@@ -422,14 +466,14 @@ def _build_frontend_analysis_response(
             "This dispute may turn on oral promises unless you can show clear written terms."
         )
 
-    if (vector.evidence_strength or 0) >= 4:
+    if evidence_strength_count >= 4:
         strengths.append("The factual record appears comparatively strong and well-supported.")
-    elif vector.evidence_strength is not None and vector.evidence_strength <= 2:
+    elif evidence_strength_count <= 1:
         weaknesses.append("The evidentiary record looks thin and may invite credibility disputes.")
 
-    if vector.prior_attempts_to_resolve:
+    if prior_attempts_to_resolve:
         strengths.append("Prior efforts to resolve the dispute can help show reasonableness.")
-    elif vector.prior_attempts_to_resolve is False:
+    elif prior_attempts_to_resolve is False:
         weaknesses.append(
             "Bring proof that you tried to resolve the dispute before filing, if available."
         )
@@ -437,7 +481,10 @@ def _build_frontend_analysis_response(
     if (vector.witness_count or 0) > 0:
         strengths.append("Witness support may reinforce your timeline and damages theory.")
 
-    if vector.timeline_clarity is not None and vector.timeline_clarity <= 2:
+    if (
+        vector.argument_has_chronological_timeline is False
+        or vector.argument_cites_specific_dates is False
+    ):
         weaknesses.append("The timeline may need to be presented more clearly for the judge.")
 
     if vector.counterclaim_present:
@@ -461,24 +508,30 @@ def _build_frontend_analysis_response(
     win_probability = int(round(prediction.win_probability * 100))
     expected_award = max(0.0, prediction.expected_monetary_outcome)
     signals = FrontendSignals(
-        has_written_evidence=vector.documentary_evidence,
-        sent_demand_letter=vector.prior_attempts_to_resolve,
+        has_written_evidence=has_documentary_evidence,
+        sent_demand_letter=vector.sent_written_demand_letter,
         has_contract=vector.contract_present,
-        defendant_responded=None,
+        defendant_responded=vector.opposing_party_filed_response_documents,
         has_witnesses=(vector.witness_count > 0) if vector.witness_count is not None else None,
-        damages_itemized=(request.claim_amount is not None) if request.claim_amount else None,
+        damages_itemized=vector.argument_quantifies_each_damage_component,
     )
 
     claim_label = (request.claim_category or "small claims dispute").replace("_", " ")
     if win_probability >= 65:
-        verdict_summary = f"This {claim_label} "
-        "appears more likely than not to succeed if the supporting proof is presented clearly."
+        verdict_summary = (
+            f"This {claim_label} appears more likely than not to succeed if the "
+            "supporting proof is presented clearly."
+        )
     elif win_probability >= 40:
-        verdict_summary = f"This {claim_label} "
-        "looks contestable, with the outcome likely to depend on documentation and credibility."
+        verdict_summary = (
+            f"This {claim_label} looks contestable, with the outcome likely to "
+            "depend on documentation and credibility."
+        )
     else:
-        verdict_summary = f"This {claim_label} "
-        "currently appears difficult to win without stronger proof or a clearer damages showing."
+        verdict_summary = (
+            f"This {claim_label} currently appears difficult to win without "
+            "stronger proof or a clearer damages showing."
+        )
 
     advice_parts = [
         "Organize your evidence in date order"
@@ -486,7 +539,7 @@ def _build_frontend_analysis_response(
         "Prepare a short hearing narrative "
         "covering the agreement, the breach or harm, and the exact amount requested.",
     ]
-    if vector.prior_attempts_to_resolve is False:
+    if prior_attempts_to_resolve is False:
         advice_parts.append(
             "If possible, bring a demand"
             " letter or other proof that you tried to resolve the dispute before hearing."
