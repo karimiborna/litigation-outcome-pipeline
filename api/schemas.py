@@ -42,13 +42,22 @@ class SimilarCaseItem(BaseModel):
     case_snippet: str | None = None
 
 
+class RagAdviceEvaluation(BaseModel):
+    """LLM-as-a-judge evaluation of retrieval-grounded advice."""
+
+    score: int = Field(..., ge=1, le=5)
+    verdict: str = Field(..., pattern="^(pass|needs_review|fail)$")
+    rationale: str
+
+
 class SimilarCaseResponse(BaseModel):
     query_summary: str
     similar_cases: list[SimilarCaseItem]
-    best_cases: list[SimilarCaseItem] = []
+    best_cases: list[SimilarCaseItem] = Field(default_factory=list)
     explanation: str
     comparison_insights: str | None = None
     advice: str | None = None
+    advice_evaluation: RagAdviceEvaluation | None = None
 
 
 class CounterfactualRequest(BaseModel):
@@ -93,15 +102,18 @@ class BatchPredictionResponse(BaseModel):
     total: int
 
 
-class FrontendAnalyzeRequest(BaseModel):
+class LexRatioAnalysisRequest(BaseModel):
+    """Request for LexRatio small claims analysis."""
+
     case_text: str = Field(..., min_length=10)
-    claim_amount: float | None = Field(default=None, ge=0)
-    claim_category: str | None = None
-    evidence_text: str | None = None
-    prior_steps_text: str | None = None
+    case_title: str | None = None
+    cause_of_action: str | None = None
+    claim_amount: float | None = None
 
 
-class FrontendSignals(BaseModel):
+class LexRatioSignals(BaseModel):
+    """Signal detection for case strengths."""
+
     has_written_evidence: bool | None = None
     sent_demand_letter: bool | None = None
     has_contract: bool | None = None
@@ -110,12 +122,18 @@ class FrontendSignals(BaseModel):
     damages_itemized: bool | None = None
 
 
-class FrontendAnalyzeResponse(BaseModel):
-    win_probability: int
+class LexRatioAnalysisResponse(BaseModel):
+    """Response with small claims court analysis."""
+
+    win_probability: int = Field(..., ge=0, le=100)
     expected_award: float
-    confidence: str
+    confidence: str = Field(..., pattern="^(high|medium|low)$")
     verdict_summary: str
     strengths: list[str]
     weaknesses: list[str]
     advice: str
-    signals: FrontendSignals
+    signals: LexRatioSignals
+    similar_cases: list[SimilarCaseItem] = Field(default_factory=list)
+    best_cases: list[SimilarCaseItem] = Field(default_factory=list)
+    comparison_insights: str | None = None
+    advice_evaluation: RagAdviceEvaluation | None = None

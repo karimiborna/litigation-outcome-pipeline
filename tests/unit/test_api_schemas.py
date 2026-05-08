@@ -8,6 +8,7 @@ from api.schemas import (
     HealthResponse,
     PredictionRequest,
     PredictionResponse,
+    RagAdviceEvaluation,
     RootResponse,
     SimilarCaseItem,
     SimilarCaseRequest,
@@ -77,9 +78,15 @@ class TestSimilarCaseResponse:
             explanation="Found similar cases.",
             comparison_insights="The top cases were stronger on documentation.",
             advice="Gather stronger receipts and contracts.",
+            advice_evaluation=RagAdviceEvaluation(
+                score=4,
+                verdict="pass",
+                rationale="Grounded and practical.",
+            ),
         )
         assert r.best_cases[0].case_number == "CSM0001"
         assert r.advice.startswith("Gather stronger")
+        assert r.advice_evaluation.score == 4
 
 
 class TestBatchPredictionRequest:

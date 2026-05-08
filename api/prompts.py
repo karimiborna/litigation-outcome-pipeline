@@ -127,3 +127,55 @@ def build_similarity_advice_prompt(
         {"role": "system", "content": SIMILARITY_ADVICE_SYSTEM},
         {"role": "user", "content": user_content},
     ]
+
+
+RAG_ADVICE_JUDGE_SYSTEM = (
+    "You are an evaluator for retrieval-grounded legal information."
+    " Judge whether the advice is faithful to the current case and retrieved cases,"
+    " practical for a small claims litigant, clear, and appropriately cautious."
+    " Do not decide the legal merits yourself. Respond with only JSON."
+)
+
+
+def build_rag_advice_judge_prompt(
+    case_text: str,
+    retrieved_cases: list[dict[str, str]],
+    advice: str,
+    comparison_insights: str,
+    max_text_length: int = 3000,
+) -> list[dict[str, str]]:
+    """Build messages for LLM-as-a-judge evaluation of RAG advice."""
+    truncated_text = case_text[:max_text_length]
+    if len(case_text) > max_text_length:
+        truncated_text += "\n[... text truncated ...]"
+
+    case_sections = ["Retrieved historical cases:"]
+    for idx, case in enumerate(retrieved_cases, start=1):
+        snippet = case.get("case_snippet") or "(no snippet available)"
+        case_sections.append(
+            f"{idx}. Case number: {case['case_number']}\n"
+            f"   Title: {case['case_title']}\n"
+            f"   Outcome: {case.get('outcome') or 'unknown'}\n"
+            f"   Similarity score: {case['similarity_score']:.4f}\n"
+            f"   Snippet: {snippet}\n"
+        )
+
+    user_content = (
+        "Evaluate this retrieval-augmented advice.\n\n"
+        f"Current case text:\n{truncated_text}\n\n"
+        + "\n".join(case_sections)
+        + "\n\n"
+        f"Comparison insights:\n{comparison_insights}\n\n"
+        f"Advice:\n{advice}\n\n"
+        "Return JSON only in this format:\n"
+        "{\n"
+        '  "score": <integer 1-5, where 5 is excellent>,\n'
+        '  "verdict": <"pass", "needs_review", or "fail">,\n'
+        '  "rationale": <one short sentence explaining the grade>\n'
+        "}\n"
+    )
+
+    return [
+        {"role": "system", "content": RAG_ADVICE_JUDGE_SYSTEM},
+        {"role": "user", "content": user_content},
+    ]

@@ -117,6 +117,9 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 .mark-neg { color: var(--color-text-danger); }
 
 .advice-entry { padding: 1rem 0 1rem 1rem; border-left: 2px solid var(--color-border-secondary); font-size: 12px; line-height: 1.75; color: var(--color-text-secondary); margin-bottom: 1.25rem; font-style: italic; }
+.comparison-entry { padding: 0 0 1rem 1rem; border-left: 2px solid var(--color-border-tertiary); font-size: 11px; line-height: 1.7; color: var(--color-text-secondary); margin-bottom: 1.25rem; }
+.case-list { font-size: 10px; color: var(--color-text-tertiary); line-height: 1.6; margin-top: 8px; }
+.judge-stamp { display: inline-block; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 8px; border: 0.5px solid var(--color-border-secondary); color: var(--color-text-tertiary); margin-top: 8px; }
 
 .signals-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1.25rem; }
 .sig-item { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--color-text-secondary); }
@@ -306,10 +309,10 @@ function renderResult(r, amount) {
   var confLabel  = conf === 'high' ? 'High confidence' : conf === 'medium' ? 'Medium confidence' : 'Low confidence';
 
   var strHtml = (r.strengths || []).map(function(s) {
-    return '<tr><td class="factor-mark mark-pos">+</td><td>' + s + '</td></tr>';
+    return '<tr><td class="factor-mark mark-pos">+</td><td>' + escapeHtml(s) + '</td></tr>';
   }).join('');
   var wkHtml = (r.weaknesses || []).map(function(w) {
-    return '<tr><td class="factor-mark mark-neg">−</td><td>' + w + '</td></tr>';
+    return '<tr><td class="factor-mark mark-neg">−</td><td>' + escapeHtml(w) + '</td></tr>';
   }).join('');
 
   var sigDefs = [
@@ -326,13 +329,31 @@ function renderResult(r, amount) {
     var cls = v === true ? 'sig-yes' : v === false ? 'sig-no' : 'sig-null';
     return '<div class="sig-item"><span class="sig-mark ' + cls + '"></span>' + d[1] + '</div>';
   }).join('');
+  var bestCasesHtml = (r.best_cases || []).slice(0, 3).map(function(c) {
+    var outcome = c.outcome ? ' · ' + c.outcome.replace(/_/g, ' ') : '';
+    return '<div>' + escapeHtml(c.case_number) + ' · ' +
+      Math.round((c.similarity_score || 0) * 100) + '% similar' +
+      outcome + '</div>';
+  }).join('');
+  var judge = r.advice_evaluation || null;
+  var judgeHtml = judge
+    ? '<div class="judge-stamp">Judge: ' + escapeHtml(judge.verdict || 'needs_review') +
+      ' · ' + escapeHtml(String(judge.score || '')) + '/5</div>'
+    : '';
+  var comparisonHtml = (r.comparison_insights || bestCasesHtml || judgeHtml)
+    ? '<div class="comparison-entry">' +
+        (r.comparison_insights ? '<div>' + escapeHtml(r.comparison_insights) + '</div>' : '') +
+        (bestCasesHtml ? '<div class="case-list">' + bestCasesHtml + '</div>' : '') +
+        judgeHtml +
+      '</div>'
+    : '';
 
   document.getElementById('result-area').innerHTML =
     '<div class="rule-double"></div>' +
     '<div class="section-cap">IV. Docket — analysis</div>' +
 
     '<div class="docket-head">' +
-      '<div class="docket-summary">"' + r.verdict_summary + '"</div>' +
+      '<div class="docket-summary">"' + escapeHtml(r.verdict_summary) + '"</div>' +
       '<div class="conf-stamp ' + stampClass + '">' + confLabel + '</div>' +
     '</div>' +
 
@@ -360,7 +381,8 @@ function renderResult(r, amount) {
     (r.advice ?
       '<div class="rule-single"></div>' +
       '<div class="section-cap">VII. Counsel\'s note</div>' +
-      '<div class="advice-entry">' + r.advice + '</div>'
+      '<div class="advice-entry">' + escapeHtml(r.advice) + '</div>' +
+      comparisonHtml
     : '') +
 
     '<div class="disclaimer">This analysis is AI-generated for informational purposes only and does not constitute legal advice. Actual outcomes depend on the specific facts presented, available evidence, and judicial discretion. Consult a licensed attorney before making legal decisions.</div>';
@@ -369,6 +391,15 @@ function renderResult(r, amount) {
     var f = document.getElementById('mfill');
     if (f) f.style.width = wp + '%';
   }, 120);
+}
+
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 </script>
 </body>

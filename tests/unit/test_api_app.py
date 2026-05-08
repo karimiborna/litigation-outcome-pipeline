@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from api.app import _outcome_rank, _select_best_similar_cases, app
+from api.app import (
+    _fallback_rag_advice_evaluation,
+    _outcome_rank,
+    _select_best_similar_cases,
+    app,
+)
 from api.schemas import SimilarCaseItem
 
 
@@ -47,3 +52,21 @@ def test_select_best_similar_cases() -> None:
     ]
     best = _select_best_similar_cases(items)
     assert best[0].case_number == "B"
+
+
+def test_fallback_rag_advice_evaluation() -> None:
+    cases = [
+        SimilarCaseItem(
+            case_number="B",
+            case_title="B",
+            similarity_score=0.8,
+            outcome="plaintiff_win",
+        )
+    ]
+
+    result = _fallback_rag_advice_evaluation(
+        "Use evidence, documents, and a clear timeline.", cases
+    )
+
+    assert result.score == 4
+    assert result.verdict == "pass"

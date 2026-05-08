@@ -117,6 +117,9 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 .mark-neg { color: var(--color-text-danger); }
 
 .advice-entry { padding: 1rem 0 1rem 1rem; border-left: 2px solid var(--color-border-secondary); font-size: 12px; line-height: 1.75; color: var(--color-text-secondary); margin-bottom: 1.25rem; font-style: italic; }
+.comparison-entry { padding: 0 0 1rem 1rem; border-left: 2px solid var(--color-border-tertiary); font-size: 11px; line-height: 1.7; color: var(--color-text-secondary); margin-bottom: 1.25rem; }
+.case-list { font-size: 10px; color: var(--color-text-tertiary); line-height: 1.6; margin-top: 8px; }
+.judge-stamp { display: inline-block; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 8px; border: 0.5px solid var(--color-border-secondary); color: var(--color-text-tertiary); margin-top: 8px; }
 
 .signals-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1.25rem; }
 .sig-item { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--color-text-secondary); }
@@ -139,20 +142,8 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 <div class="ledger">
 
   <div class="logo-bar">
-    <svg class="logo-seal" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="24" cy="24" r="22.5" stroke="var(--color-border-primary)" stroke-width="1"/>
-      <circle cx="24" cy="24" r="19" stroke="var(--color-border-secondary)" stroke-width="0.5"/>
-      <path d="M24 10 L26.2 17.6 L34.2 17.6 L27.8 22.4 L30 30 L24 25.2 L18 30 L20.2 22.4 L13.8 17.6 L21.8 17.6 Z" fill="var(--color-text-primary)" opacity="0.12"/>
-      <line x1="16" y1="21" x2="32" y2="21" stroke="var(--color-text-primary)" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M19 21 L19 32 M29 21 L29 32" stroke="var(--color-text-primary)" stroke-width="1.2" stroke-linecap="round"/>
-      <path d="M16.5 32 L31.5 32" stroke="var(--color-text-primary)" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M13 15.5 L35 15.5" stroke="var(--color-text-primary)" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-      <circle cx="24" cy="10.5" r="1.5" fill="var(--color-text-primary)" opacity="0.6"/>
-      <text x="24" y="40" text-anchor="middle" font-family="'DM Mono',monospace" font-size="4" letter-spacing="1.5" fill="var(--color-text-tertiary)">FIAT IVSTITIA</text>
-    </svg>
+    <img src="/Users/courtneymohun/Downloads/logo5.png">
     <div>
-      <div class="logo-name">Lex<span style="opacity:0.35">·</span>Ratio</div>
-      <div class="logo-tagline">Small Claims Court Advisor</div>
     </div>
   </div>
 
@@ -237,10 +228,18 @@ async function analyze() {
   document.getElementById('btn-spin').style.display = 'inline-block';
   document.getElementById('result-area').innerHTML = '';
 
+  var case_text = [
+    cat ? 'Case type: ' + cat : '',
+    amount ? 'Amount in dispute: $' + amount : '',
+    'Facts: ' + narrative,
+    evidence ? 'Evidence: ' + evidence : '',
+    steps ? 'Prior steps: ' + steps : ''
+  ].filter(Boolean).join('\n');
+
   // Determine API URL
   var apiUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8000/analyze'
-    : window.location.origin + '/analyze';
+    ? 'http://localhost:8000/api/analyze-lexratio'
+    : window.location.origin + '/api/analyze-lexratio';
 
   try {
     var resp = await fetch(apiUrl, {
@@ -249,11 +248,10 @@ async function analyze() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        case_text: narrative,
-        claim_amount: amount ? parseFloat(amount) : null,
-        claim_category: cat || null,
-        evidence_text: evidence || null,
-        prior_steps_text: steps || null
+        case_text: case_text,
+        case_title: narrative.substring(0, 100),
+        cause_of_action: cat || 'other',
+        claim_amount: parseFloat(amount) || 0
       })
     });
 
@@ -286,10 +284,10 @@ function renderResult(r, amount) {
   var confLabel  = conf === 'high' ? 'High confidence' : conf === 'medium' ? 'Medium confidence' : 'Low confidence';
 
   var strHtml = (r.strengths || []).map(function(s) {
-    return '<tr><td class="factor-mark mark-pos">+</td><td>' + s + '</td></tr>';
+    return '<tr><td class="factor-mark mark-pos">+</td><td>' + escapeHtml(s) + '</td></tr>';
   }).join('');
   var wkHtml = (r.weaknesses || []).map(function(w) {
-    return '<tr><td class="factor-mark mark-neg">−</td><td>' + w + '</td></tr>';
+    return '<tr><td class="factor-mark mark-neg">−</td><td>' + escapeHtml(w) + '</td></tr>';
   }).join('');
 
   var sigDefs = [
@@ -306,13 +304,31 @@ function renderResult(r, amount) {
     var cls = v === true ? 'sig-yes' : v === false ? 'sig-no' : 'sig-null';
     return '<div class="sig-item"><span class="sig-mark ' + cls + '"></span>' + d[1] + '</div>';
   }).join('');
+  var bestCasesHtml = (r.best_cases || []).slice(0, 3).map(function(c) {
+    var outcome = c.outcome ? ' · ' + c.outcome.replace(/_/g, ' ') : '';
+    return '<div>' + escapeHtml(c.case_number) + ' · ' +
+      Math.round((c.similarity_score || 0) * 100) + '% similar' +
+      outcome + '</div>';
+  }).join('');
+  var judge = r.advice_evaluation || null;
+  var judgeHtml = judge
+    ? '<div class="judge-stamp">Judge: ' + escapeHtml(judge.verdict || 'needs_review') +
+      ' · ' + escapeHtml(String(judge.score || '')) + '/5</div>'
+    : '';
+  var comparisonHtml = (r.comparison_insights || bestCasesHtml || judgeHtml)
+    ? '<div class="comparison-entry">' +
+        (r.comparison_insights ? '<div>' + escapeHtml(r.comparison_insights) + '</div>' : '') +
+        (bestCasesHtml ? '<div class="case-list">' + bestCasesHtml + '</div>' : '') +
+        judgeHtml +
+      '</div>'
+    : '';
 
   document.getElementById('result-area').innerHTML =
     '<div class="rule-double"></div>' +
     '<div class="section-cap">IV. Docket — analysis</div>' +
 
     '<div class="docket-head">' +
-      '<div class="docket-summary">"' + r.verdict_summary + '"</div>' +
+      '<div class="docket-summary">"' + escapeHtml(r.verdict_summary) + '"</div>' +
       '<div class="conf-stamp ' + stampClass + '">' + confLabel + '</div>' +
     '</div>' +
 
@@ -340,7 +356,8 @@ function renderResult(r, amount) {
     (r.advice ?
       '<div class="rule-single"></div>' +
       '<div class="section-cap">VII. Counsel\'s note</div>' +
-      '<div class="advice-entry">' + r.advice + '</div>'
+      '<div class="advice-entry">' + escapeHtml(r.advice) + '</div>' +
+      comparisonHtml
     : '') +
 
     '<div class="disclaimer">This analysis is AI-generated for informational purposes only and does not constitute legal advice. Actual outcomes depend on the specific facts presented, available evidence, and judicial discretion. Consult a licensed attorney before making legal decisions.</div>';
@@ -349,6 +366,15 @@ function renderResult(r, amount) {
     var f = document.getElementById('mfill');
     if (f) f.style.width = wp + '%';
   }, 120);
+}
+
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 </script>
 </body>

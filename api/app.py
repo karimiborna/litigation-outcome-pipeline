@@ -12,7 +12,7 @@ from pathlib import Path
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from api.dependencies import app_state
 from api.schemas import (
@@ -21,12 +21,13 @@ from api.schemas import (
     CounterfactualItem,
     CounterfactualRequest,
     CounterfactualResponse,
-    FrontendAnalyzeRequest,
-    FrontendAnalyzeResponse,
-    FrontendSignals,
     HealthResponse,
+    LexRatioAnalysisRequest,
+    LexRatioAnalysisResponse,
+    LexRatioSignals,
     PredictionRequest,
     PredictionResponse,
+    RagAdviceEvaluation,
     RootResponse,
     SimilarCaseItem,
     SimilarCaseRequest,
@@ -34,13 +35,11 @@ from api.schemas import (
 )
 from data.schemas.case import ProcessedCase
 from features.config import FeaturesConfig
-from features.prompts import build_similarity_advice_prompt
 from features.schema import FeatureVector
 from models.dataset import feature_vector_to_model_frame
+from api.prompts import build_rag_advice_judge_prompt, build_similarity_advice_prompt
 
 logger = logging.getLogger(__name__)
-APP_VERSION = "0.1.0"
-LEXRATIO_HTML = Path(__file__).resolve().parent.parent / "lexratio.html"
 
 
 @asynccontextmanager
@@ -57,16 +56,32 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Litigation Outcome Predictor",
     description="Predicts small claims court case outcomes using ML",
-    version=APP_VERSION,
+    version="0.1.0",
     lifespan=lifespan,
 )
+
+# Add CORS middleware to allow frontend requests from Vercel and localhost
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+        "http://127.0.0.1:5173",
+        "https://*.vercel.app",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files directory for LexRatio frontend
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    logger.info("Static files mounted from %s", static_dir)
 
 
 @app.get("/", response_model=RootResponse)
@@ -74,22 +89,26 @@ async def root() -> RootResponse:
     return RootResponse(
         message="Welcome to the Litigation Outcome Predictor API.",
         service="litigation-outcome-pipeline",
-        docs="/docs",
     )
 
 
-@app.get("/lexratio", response_class=FileResponse, include_in_schema=False)
-async def lexratio_frontend() -> FileResponse:
-    if not LEXRATIO_HTML.exists():
-        raise HTTPException(status_code=404, detail="lexratio.html not found")
-    return FileResponse(LEXRATIO_HTML)
+@app.get("/lexratio")
+async def lexratio_ui():
+    """Serve the LexRatio UI."""
+    from fastapi.responses import FileResponse
+
+    static_dir = Path(__file__).parent / "static"
+    lexratio_file = static_dir / "lexratio.html"
+    if not lexratio_file.exists():
+        raise HTTPException(status_code=404, detail="LexRatio UI not available")
+    return FileResponse(lexratio_file, media_type="text/html")
 
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse(
         status="healthy",
-        version=APP_VERSION,
+        version="0.1.0",
         models_loaded=app_state.models_loaded,
         classifier_loaded=app_state.classifier_loaded,
         regressor_loaded=app_state.regressor_loaded,
@@ -110,8 +129,8 @@ async def predict(request: PredictionRequest) -> PredictionResponse:
     return await asyncio.to_thread(_run_prediction_sync, feature_vector, request.case_number)
 
 
-@app.post("/analyze", response_model=FrontendAnalyzeResponse)
-async def analyze_case(request: FrontendAnalyzeRequest) -> FrontendAnalyzeResponse:
+@app.post("/analyze", response_model=LexRatioAnalysisResponse)
+async def analyze_case(request: LexRatioAnalysisRequest) -> LexRatioAnalysisResponse:
     """Frontend-friendly analysis endpoint for lexratio.html."""
     if not app_state.models_loaded:
         raise HTTPException(status_code=503, detail="Models not loaded")
@@ -121,16 +140,17 @@ async def analyze_case(request: FrontendAnalyzeRequest) -> FrontendAnalyzeRespon
     case_text = _build_frontend_case_text(request)
     case = ProcessedCase(
         case_number="LEXRATIO",
-        case_title="LexRatio frontend submission",
-        cause_of_action=request.claim_category,
+        case_title=request.case_title or "LexRatio frontend submission",
+        cause_of_action=request.cause_of_action or "other",
         filing_date=date.today(),
         full_text=case_text,
         claim_amount=request.claim_amount,
     )
     feature_vector = await app_state.feature_extractor.extract(case)
     prediction = await asyncio.to_thread(_run_prediction_sync, feature_vector, "LEXRATIO")
+    rag_context = await _build_rag_context(case_text)
 
-    return _build_frontend_analysis_response(request, feature_vector, prediction)
+    return _build_frontend_analysis_response(request, feature_vector, prediction, rag_context)
 
 
 @app.post("/predict/batch", response_model=BatchPredictionResponse)
@@ -155,6 +175,7 @@ def _outcome_rank(outcome: str | None) -> int:
     ranking = {
         "plaintiff_win": 4,
         "settled": 3,
+        "settlement": 3,
         "dismissed": 2,
         "defendant_win": 1,
     }
@@ -178,24 +199,13 @@ async def _build_similarity_advice(
     if not best_cases:
         return (
             "No strong historical cases were found for comparison.",
-            "Review evidence strength and documentation, "
-            "and consider whether additional proof would make the claim clearer.",
+            "Review evidence strength and documentation, and consider whether additional proof would make the claim clearer.",
         )
 
     if not config.llm_api_key:
         return _fallback_similarity_advice(best_cases)
 
-    retrieved_cases = [
-        {
-            "case_number": case.case_number,
-            "case_title": case.case_title,
-            "outcome": case.outcome or "unknown",
-            "similarity_score": case.similarity_score,
-            "case_snippet": case.case_snippet or "",
-        }
-        for case in best_cases
-    ]
-
+    retrieved_cases = _similar_cases_for_prompt(best_cases)
     messages = build_similarity_advice_prompt(case_text, retrieved_cases)
     body = {
         "model": config.llm_model,
@@ -215,46 +225,162 @@ async def _build_similarity_advice(
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
 
-        parsed = _parse_advice_response(content)
-        return parsed.get(
-            "comparison_insights", "Comparison analysis was unavailable."
-        ), parsed.get(
-            "advice",
-            "Focus on improving the strength of the evidence"
-            " and the clarity of the claim presentation.",
+        parsed = _parse_json_response(content)
+        return (
+            parsed.get("comparison_insights", "Comparison analysis was unavailable."),
+            parsed.get(
+                "advice",
+                "Focus on improving the strength of the evidence and the clarity of the claim presentation.",
+            ),
         )
     except Exception:
+        logger.exception("RAG advice generation failed; using fallback advice")
         return _fallback_similarity_advice(best_cases)
 
 
-def _parse_advice_response(content: str) -> dict[str, str]:
+async def _evaluate_rag_advice(
+    case_text: str,
+    best_cases: list[SimilarCaseItem],
+    comparison_insights: str,
+    advice: str,
+) -> RagAdviceEvaluation:
+    config = FeaturesConfig()
+    if not best_cases:
+        return RagAdviceEvaluation(
+            score=3,
+            verdict="needs_review",
+            rationale="No retrieved cases were available, so the advice could not be grounded.",
+        )
+
+    if not config.llm_api_key:
+        return _fallback_rag_advice_evaluation(advice, best_cases)
+
+    retrieved_cases = _similar_cases_for_prompt(best_cases)
+    messages = build_rag_advice_judge_prompt(
+        case_text=case_text,
+        retrieved_cases=retrieved_cases,
+        advice=advice,
+        comparison_insights=comparison_insights,
+    )
+    body = {
+        "model": config.llm_model,
+        "messages": messages,
+        "temperature": 0.0,
+        "max_tokens": 512,
+    }
+    base_url = config.llm_base_url or "https://api.openai.com/v1"
+    headers = {
+        "Authorization": f"Bearer {config.llm_api_key}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=config.llm_timeout) as client:
+            resp = await client.post(f"{base_url}/chat/completions", json=body, headers=headers)
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+
+        return RagAdviceEvaluation.model_validate(_parse_json_response(content))
+    except Exception:
+        logger.exception("RAG advice evaluation failed; using fallback evaluation")
+        return _fallback_rag_advice_evaluation(advice, best_cases)
+
+
+def _parse_json_response(content: str) -> dict:
     text = content.strip()
     if text.startswith("```"):
         lines = text.split("\n")
         text = "\n".join(lines[1:-1])
     try:
-        return json.loads(text)
+        parsed = json.loads(text)
     except Exception:
-        return {
-            "comparison_insights": "Could not parse the model response cleanly.",
-            "advice": "Review the retrieved historical cases and"
-            " focus on clearer evidence and contract documentation.",
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _similar_cases_for_prompt(best_cases: list[SimilarCaseItem]) -> list[dict]:
+    return [
+        {
+            "case_number": case.case_number,
+            "case_title": case.case_title,
+            "outcome": case.outcome or "unknown",
+            "similarity_score": case.similarity_score,
+            "case_snippet": case.case_snippet or "",
         }
+        for case in best_cases
+    ]
 
 
 def _fallback_similarity_advice(best_cases: list[SimilarCaseItem]) -> tuple[str, str]:
     winner = best_cases[0]
     outcome = winner.outcome or "unknown"
     summary = (
-        f"The most successful retrieved case is {winner.case_number} ({winner.case_title}) "
+        f"The strongest retrieved comparison is {winner.case_number} ({winner.case_title}) "
         f"with outcome {outcome}."
     )
     advice = (
         "The historical cases that did best tend to have strong evidence, clear documentation, "
-        "and a well-articulated timeline. "
-        "Focus on making your claim more concrete and tied to specific facts."
+        "and a well-articulated timeline. Focus on making your claim concrete and tied to specific facts."
     )
     return summary, advice
+
+
+def _fallback_rag_advice_evaluation(
+    advice: str, best_cases: list[SimilarCaseItem]
+) -> RagAdviceEvaluation:
+    has_grounding = bool(best_cases)
+    has_practical_terms = any(
+        term in advice.lower()
+        for term in ("evidence", "document", "timeline", "receipt", "contract", "fact")
+    )
+    score = 4 if has_grounding and has_practical_terms else 3
+    return RagAdviceEvaluation(
+        score=score,
+        verdict="pass" if score >= 4 else "needs_review",
+        rationale=(
+            "Fallback judge found the advice practical and connected to retrieved cases."
+            if score >= 4
+            else "Fallback judge could not confirm strong grounding in retrieved cases."
+        ),
+    )
+
+
+async def _build_rag_context(case_text: str) -> dict:
+    if app_state.case_index is None:
+        return {
+            "similar_cases": [],
+            "best_cases": [],
+            "comparison_insights": "No retrieval index is available for comparison.",
+            "advice": None,
+            "advice_evaluation": None,
+        }
+
+    results = app_state.case_index.search(case_text, top_k=5)
+    similar_cases = [
+        SimilarCaseItem(
+            case_number=r.case_number,
+            case_title=r.case_title,
+            similarity_score=r.score,
+            outcome=r.metadata.get("outcome"),
+            case_snippet=r.metadata.get("case_snippet"),
+        )
+        for r in results
+    ]
+    best_cases = _select_best_similar_cases(similar_cases)
+    comparison_insights, advice = await _build_similarity_advice(case_text, best_cases)
+    advice_evaluation = await _evaluate_rag_advice(
+        case_text,
+        best_cases,
+        comparison_insights,
+        advice,
+    )
+    return {
+        "similar_cases": similar_cases,
+        "best_cases": best_cases,
+        "comparison_insights": comparison_insights,
+        "advice": advice,
+        "advice_evaluation": advice_evaluation,
+    }
 
 
 @app.post("/similar", response_model=SimilarCaseResponse)
@@ -275,9 +401,7 @@ async def similar_cases(request: SimilarCaseRequest) -> SimilarCaseResponse:
         )
         for r in results
     ]
-
     best_cases = _select_best_similar_cases(items)
-    comparison_insights, advice = await _build_similarity_advice(request.case_text, best_cases)
 
     if items:
         outcomes = [i.outcome for i in items if i.outcome]
@@ -287,6 +411,14 @@ async def similar_cases(request: SimilarCaseRequest) -> SimilarCaseResponse:
     else:
         explanation = "No similar cases found above the similarity threshold."
 
+    comparison_insights, advice = await _build_similarity_advice(request.case_text, best_cases)
+    advice_evaluation = await _evaluate_rag_advice(
+        request.case_text,
+        best_cases,
+        comparison_insights,
+        advice,
+    )
+
     return SimilarCaseResponse(
         query_summary=request.case_text[:200],
         similar_cases=items,
@@ -294,6 +426,7 @@ async def similar_cases(request: SimilarCaseRequest) -> SimilarCaseResponse:
         explanation=explanation,
         comparison_insights=comparison_insights,
         advice=advice,
+        advice_evaluation=advice_evaluation,
     )
 
 
@@ -336,6 +469,32 @@ async def counterfactual(request: CounterfactualRequest) -> CounterfactualRespon
         original_monetary_outcome=round(original_monetary, 2),
         counterfactuals=items,
     )
+
+
+@app.post("/api/analyze-lexratio", response_model=LexRatioAnalysisResponse)
+async def analyze_lexratio(request: LexRatioAnalysisRequest) -> LexRatioAnalysisResponse:
+    """Analyze a small claims case for LexRatio frontend."""
+    if not app_state.models_loaded:
+        raise HTTPException(status_code=503, detail="Models not loaded")
+    if app_state.feature_extractor is None:
+        raise HTTPException(status_code=503, detail="Feature extractor not initialized")
+
+    # Build a case from the request
+    case = ProcessedCase(
+        case_number="LEXRATIO_UNKNOWN",
+        case_title=request.case_title or "Small Claims Case",
+        cause_of_action=request.cause_of_action or "other",
+        filing_date=date.today(),
+        full_text=request.case_text,
+        claim_amount=request.claim_amount,
+    )
+
+    # Extract features and run prediction
+    feature_vector = await app_state.feature_extractor.extract(case)
+    prediction = await asyncio.to_thread(_run_prediction_sync, feature_vector, None)
+    rag_context = await _build_rag_context(request.case_text)
+
+    return _build_frontend_analysis_response(request, feature_vector, prediction, rag_context)
 
 
 def _build_processed_case(request: PredictionRequest) -> ProcessedCase:
@@ -386,21 +545,32 @@ def _run_prediction_sync(vector: FeatureVector, case_number: str | None) -> Pred
         confidence=confidence,
     )
 
+def _detect_written_evidence(text: str) -> bool | None:
+    """Check for mentions of written evidence."""
+    keywords = [
+        "contract",
+        "receipt",
+        "email",
+        "text message",
+        "invoice",
+        "letter",
+        "document",
+        "agreement",
+    ]
+    return any(kw in text for kw in keywords) if text else None
 
-def _build_frontend_case_text(request: FrontendAnalyzeRequest) -> str:
+
+def _build_frontend_case_text(request: LexRatioAnalysisRequest) -> str:
     parts = [request.case_text.strip()]
-    if request.evidence_text:
-        parts.append(f"Evidence: {request.evidence_text.strip()}")
-    if request.prior_steps_text:
-        parts.append(f"Prior steps: {request.prior_steps_text.strip()}")
     return "\n\n".join(parts)
 
 
 def _build_frontend_analysis_response(
-    request: FrontendAnalyzeRequest,
+    request: LexRatioAnalysisRequest,
     vector: FeatureVector,
     prediction: PredictionResponse,
-) -> FrontendAnalyzeResponse:
+    rag_context: dict | None = None,
+) -> LexRatioAnalysisResponse:
     strengths: list[str] = []
     weaknesses: list[str] = []
 
@@ -457,7 +627,7 @@ def _build_frontend_analysis_response(
 
     if vector.contract_present:
         strengths.append("A contract or agreement is a strong anchor for a small claims dispute.")
-    elif vector.contract_present is False and request.claim_category in {
+    elif vector.contract_present is False and request.cause_of_action in {
         "unpaid_debt",
         "service_dispute",
         "breach_of_contract",
@@ -507,7 +677,7 @@ def _build_frontend_analysis_response(
 
     win_probability = int(round(prediction.win_probability * 100))
     expected_award = max(0.0, prediction.expected_monetary_outcome)
-    signals = FrontendSignals(
+    signals = LexRatioSignals(
         has_written_evidence=has_documentary_evidence,
         sent_demand_letter=vector.sent_written_demand_letter,
         has_contract=vector.contract_present,
@@ -516,7 +686,7 @@ def _build_frontend_analysis_response(
         damages_itemized=vector.argument_quantifies_each_damage_component,
     )
 
-    claim_label = (request.claim_category or "small claims dispute").replace("_", " ")
+    claim_label = (request.cause_of_action or "small claims dispute").replace("_", " ")
     if win_probability >= 65:
         verdict_summary = (
             f"This {claim_label} appears more likely than not to succeed if the "
@@ -544,9 +714,11 @@ def _build_frontend_analysis_response(
             "If possible, bring a demand"
             " letter or other proof that you tried to resolve the dispute before hearing."
         )
-    advice = " ".join(advice_parts[:3])
+    default_advice = " ".join(advice_parts[:3])
+    rag_context = rag_context or {}
+    advice = rag_context.get("advice") or default_advice
 
-    return FrontendAnalyzeResponse(
+    return LexRatioAnalysisResponse(
         win_probability=win_probability,
         expected_award=round(expected_award, 2),
         confidence=prediction.confidence,
@@ -555,4 +727,8 @@ def _build_frontend_analysis_response(
         weaknesses=weaknesses,
         advice=advice,
         signals=signals,
+        similar_cases=rag_context.get("similar_cases") or [],
+        best_cases=rag_context.get("best_cases") or [],
+        comparison_insights=rag_context.get("comparison_insights"),
+        advice_evaluation=rag_context.get("advice_evaluation"),
     )
