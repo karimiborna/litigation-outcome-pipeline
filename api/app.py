@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.dependencies import app_state
@@ -84,8 +85,15 @@ if static_dir.exists():
     logger.info("Static files mounted from %s", static_dir)
 
 
-@app.get("/", response_model=RootResponse)
-async def root() -> RootResponse:
+def _lexratio_file() -> Path:
+    static_file = Path(__file__).parent / "static" / "lexratio.html"
+    if static_file.exists():
+        return static_file
+    return Path(__file__).parent.parent / "lexratio.html"
+
+
+@app.get("/api/", response_model=RootResponse)
+async def api_root() -> RootResponse:
     return RootResponse(
         message="Welcome to the Litigation Outcome Predictor API.",
         service="litigation-outcome-pipeline",
@@ -93,12 +101,10 @@ async def root() -> RootResponse:
 
 
 @app.get("/lexratio")
-async def lexratio_ui():
+@app.get("/", include_in_schema=False)
+async def lexratio_ui() -> FileResponse:
     """Serve the LexRatio UI."""
-    from fastapi.responses import FileResponse
-
-    static_dir = Path(__file__).parent / "static"
-    lexratio_file = static_dir / "lexratio.html"
+    lexratio_file = _lexratio_file()
     if not lexratio_file.exists():
         raise HTTPException(status_code=404, detail="LexRatio UI not available")
     return FileResponse(lexratio_file, media_type="text/html")

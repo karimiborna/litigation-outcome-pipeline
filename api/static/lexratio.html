@@ -12,14 +12,17 @@
 :root {
   --color-text-primary: #1a1a18;
   --color-text-secondary: #3d3d3a;
-  --color-text-tertiary: #73726c;
+  --color-text-tertiary: #3D2F29;
+  --color-text-quarternary: #898686;
   --color-text-success: #166534;
   --color-text-warning: #92400e;
   --color-text-danger: #991b1b;
   --color-background-primary: #ffffff;
-  --color-background-secondary: #f5f4f0;
+  --color-background-secondary: #6F2919;
+  --color-background-button: #6F2919;
+  --color-text-button: #E0C197;
   --color-border-primary: rgba(0,0,0,0.4);
-  --color-border-secondary: rgba(0,0,0,0.2);
+  --color-border-secondary: #CD9B6F;
   --color-border-tertiary: rgba(0,0,0,0.1);
 }
 
@@ -51,21 +54,33 @@ body {
 
 .ledger {
   max-width: 680px;
-  margin: 0 auto;
-  padding-bottom: 4rem;
+  position: fixed;
+  left: 28%;
+  top: 3%;
 }
 
 .logo-bar { display: flex; align-items: center; gap: 14px; margin-bottom: 0.25rem; }
 .logo-seal { width: 48px; height: 48px; flex-shrink: 0; }
 .logo-name { font-family: 'DM Serif Display', Georgia, serif; font-size: 22px; line-height: 1; letter-spacing: -0.3px; color: var(--color-text-primary); }
 .logo-tagline { font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--color-text-tertiary); margin-top: 3px; }
+.logo-picture {position: fixed; position: absolute; left: -94%; top: -6%}
 
 .rule-double { height: 5px; border-top: 2px solid var(--color-border-primary); border-bottom: 0.5px solid var(--color-border-secondary); margin: 1rem 0 1.5rem; }
 .rule-single { height: 1px; background: var(--color-border-tertiary); margin: 1.25rem 0; }
+.section-cap1 { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-text-quarternary); margin-bottom: 0px; margin-top: 204px; font-weight: 500; }
 
-.section-cap { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 10px; font-weight: 500; }
+.section-cap { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-text-quarternary); margin-bottom: 10px; font-weight: 500; }
+.field:first-child {
+  margin-top: 10rem;
+}
+.field + .field { margin-top: 10rem; }
+div:first-child {
+  margin-top: 3px;
+}
+div:nth-child(2) {
+  margin-top: 3px;
+}
 
-.field + .field { margin-top: 1rem; }
 .field-label { display: block; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 5px; font-weight: 500; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
@@ -73,7 +88,7 @@ textarea, input[type=text], input[type=number], select {
   font-family: 'DM Mono', monospace;
   font-size: 12px;
   background: var(--color-background-secondary);
-  border: 0.5px solid var(--color-border-secondary);
+  border-left: 5px solid var(--color-border-secondary);
   border-radius: 0;
   color: var(--color-text-primary);
 }
@@ -83,11 +98,14 @@ select { width: 100%; height: 34px; padding: 0 10px; }
 textarea:focus, input:focus, select:focus { outline: none; border-color: var(--color-border-primary); }
 
 .submit-row { display: flex; align-items: center; gap: 16px; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 0.5px solid var(--color-border-tertiary); }
-.submit-btn { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; font-weight: 500; padding: 10px 24px; background: var(--color-text-primary); color: var(--color-background-primary); border: none; cursor: pointer; transition: opacity 0.15s; display: flex; align-items: center; gap: 8px; }
+.submit-btn { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; font-weight: 500; padding: 10px 24px; background: var(--color-background-button); color: var(--color-text-button); border: none; cursor: pointer; transition: opacity 0.15s; display: flex; align-items: center; gap: 8px; }
 .submit-btn:hover { opacity: 0.82; }
 .submit-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .submit-note { font-size: 10px; color: var(--color-text-tertiary); letter-spacing: 0.5px; }
-
+.explicit-color::placeholder {
+  /* use the same color as input element to avoid the browser set default color */
+  color: #CD9B6F;
+}
 .spinner { display: inline-block; width: 12px; height: 12px; border: 1.5px solid rgba(255,255,255,0.3); border-top-color: currentColor; border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -157,32 +175,26 @@ window.API_URL = window.API_URL || (function() {
 <div class="ledger">
 
   <div class="logo-bar">
+
     <svg class="logo-seal" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="24" cy="24" r="22.5" stroke="var(--color-border-primary)" stroke-width="1"/>
-      <circle cx="24" cy="24" r="19" stroke="var(--color-border-secondary)" stroke-width="0.5"/>
-      <path d="M24 10 L26.2 17.6 L34.2 17.6 L27.8 22.4 L30 30 L24 25.2 L18 30 L20.2 22.4 L13.8 17.6 L21.8 17.6 Z" fill="var(--color-text-primary)" opacity="0.12"/>
-      <line x1="16" y1="21" x2="32" y2="21" stroke="var(--color-text-primary)" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M19 21 L19 32 M29 21 L29 32" stroke="var(--color-text-primary)" stroke-width="1.2" stroke-linecap="round"/>
-      <path d="M16.5 32 L31.5 32" stroke="var(--color-text-primary)" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M13 15.5 L35 15.5" stroke="var(--color-text-primary)" stroke-width="1" stroke-linecap="round" opacity="0.5"/>
-      <circle cx="24" cy="10.5" r="1.5" fill="var(--color-text-primary)" opacity="0.6"/>
-      <text x="24" y="40" text-anchor="middle" font-family="'DM Mono',monospace" font-size="4" letter-spacing="1.5" fill="var(--color-text-tertiary)">FIAT IVSTITIA</text>
     </svg>
+        <img class="logo-picture" src="static/logo8.png" style="vertical-align:top;height:360px;">
+        
+      </img>
+
     <div>
-      <div class="logo-name">Lex<span style="opacity:0.35">·</span>Ratio</div>
-      <div class="logo-tagline">Small Claims Court Advisor</div>
     </div>
   </div>
 
   <div class="rule-double"></div>
 
-  <div class="section-cap">I. Case particulars</div>
+  <div class="section-cap1">I. Case particulars</div>
 
   <div class="field">
     <div class="field-row">
       <div>
         <label class="field-label">Nature of dispute</label>
-        <select id="in-cat">
+        <select id="in-cat" class= "explicit-color">
           <option value="">— select —</option>
           <option value="unpaid_debt">Unpaid debt / money owed</option>
           <option value="security_deposit">Security deposit</option>
@@ -191,12 +203,12 @@ window.API_URL = window.API_URL || (function() {
           <option value="breach_of_contract">Breach of contract</option>
           <option value="personal_injury">Personal injury</option>
           <option value="fraud">Fraud / misrepresentation</option>
-          <option value="other">Other</option>
+          <option value="other">Other</option> 
         </select>
       </div>
       <div>
         <label class="field-label">Amount in dispute ($)</label>
-        <input type="number" id="in-amount" placeholder="0.00" min="0">
+        <input type="number" id="in-amount" placeholder="0.00" min="0" class= "explicit-color">
       </div>
     </div>
   </div>
@@ -206,7 +218,7 @@ window.API_URL = window.API_URL || (function() {
 
   <div class="field">
     <label class="field-label">What happened — describe in full</label>
-    <textarea id="in-narrative" placeholder="Describe the dispute from the beginning. Include dates, what was agreed, what went wrong, and who was involved. The more detail you provide, the more accurate the analysis."></textarea>
+    <textarea id="in-narrative" placeholder="Describe the dispute from the beginning. Include dates, what was agreed, what went wrong, and who was involved. The more detail you provide, the more accurate the analysis." class= "explicit-color"></textarea>
   </div>
 
   <div class="rule-single"></div>
@@ -216,11 +228,11 @@ window.API_URL = window.API_URL || (function() {
     <div class="field-row">
       <div>
         <label class="field-label">Evidence in your possession</label>
-        <textarea id="in-evidence" style="min-height:72px" placeholder="e.g. Signed contract, receipts, text messages, photos, invoices, police report…"></textarea>
+        <textarea id="in-evidence" style="min-height:72px" placeholder="e.g. Signed contract, receipts, text messages, photos, invoices, police report…" class= "explicit-color"></textarea>
       </div>
       <div>
         <label class="field-label">Steps already taken</label>
-        <textarea id="in-steps" style="min-height:72px" placeholder="e.g. Sent demand letter via certified mail, attempted mediation…"></textarea>
+        <textarea id="in-steps" style="min-height:72px" placeholder="e.g. Sent demand letter via certified mail, attempted mediation…" class= "explicit-color"></textarea>
       </div>
     </div>
   </div>
