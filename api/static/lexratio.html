@@ -10,19 +10,19 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 :root {
-  --color-text-primary: #1a1a18;
+  --color-text-primary: #6F2919;
   --color-text-secondary: #3d3d3a;
   --color-text-tertiary: #3D2F29;
   --color-text-quarternary: #898686;
   --color-text-success: #166534;
   --color-text-warning: #92400e;
   --color-text-danger: #991b1b;
-  --color-background-primary: #ffffff;
-  --color-background-secondary: #6F2919;
+  --color-background-primary: #181311;
+  --color-background-secondary: #ffffff;
   --color-background-button: #6F2919;
   --color-text-button: #E0C197;
   --color-border-primary: rgba(0,0,0,0.4);
-  --color-border-secondary: #CD9B6F;
+  --color-border-secondary: #6F2919;
   --color-border-tertiary: rgba(0,0,0,0.1);
 }
 
@@ -63,15 +63,17 @@ body {
 .logo-seal { width: 48px; height: 48px; flex-shrink: 0; }
 .logo-name { font-family: 'DM Serif Display', Georgia, serif; font-size: 22px; line-height: 1; letter-spacing: -0.3px; color: var(--color-text-primary); }
 .logo-tagline { font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--color-text-tertiary); margin-top: 3px; }
-.logo-picture {position: fixed; position: absolute; left: -94%; top: -6%}
+.logo-picture {position: fixed; position: absolute; left: -54%; top: -2%}
 
 .rule-double { height: 5px; border-top: 2px solid var(--color-border-primary); border-bottom: 0.5px solid var(--color-border-secondary); margin: 1rem 0 1.5rem; }
 .rule-single { height: 1px; background: var(--color-border-tertiary); margin: 1.25rem 0; }
-.section-cap1 { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-text-quarternary); margin-bottom: 0px; margin-top: 204px; font-weight: 500; }
+.section-cap1 { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-text-quarternary); margin-bottom: 0px; margin-top: 204px; font-weight: 500; margin-left: -5%;
+ }
 
-.section-cap { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-text-quarternary); margin-bottom: 10px; font-weight: 500; }
-.field:first-child {
-  margin-top: 10rem;
+.section-cap { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--color-text-quarternary); margin-bottom: 10px; font-weight: 500; margin-left: -5%;
+}
+.field {
+  margin-left: -5%;
 }
 .field + .field { margin-top: 10rem; }
 div:first-child {

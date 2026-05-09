@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
-
+from pathlib import Path
 from counterfactual.analyzer import CounterfactualAnalyzer
 from features.config import FeaturesConfig
 from features.extraction import FeatureExtractor
@@ -12,7 +12,11 @@ from models.config import MLflowConfig
 from models.tracking import init_mlflow, load_production_model
 from models.validation import ModelValidationError, validate_all
 from retrieval.config import RetrievalConfig
-from retrieval.index import CaseIndex
+from retrieval.index import HybridCaseIndex
+from retrieval.index import CaseDocument
+from sentence_transformers import SentenceTransformer
+
+from retrieval.embeddings import EmbeddingModel
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +29,7 @@ class AppState:
         self.classifier: Any = None
         self.regressor: Any = None
         self.feature_extractor: FeatureExtractor | None = None
-        self.case_index: CaseIndex | None = None
+        self.case_index: HybridCaseIndex | None = None
         self.counterfactual_analyzer: CounterfactualAnalyzer | None = None
         self.models_loaded: bool = False
         self.classifier_loaded: bool = False
@@ -107,10 +111,31 @@ class AppState:
 
     def load_case_index(self, config: RetrievalConfig | None = None) -> None:
         config = config or RetrievalConfig()
+        embedding_model = EmbeddingModel(config)
+
+        index_path = Path("data/retrieval_index")
+        manifest_file = index_path / "manifest.json"
+
         try:
-            self.case_index = CaseIndex(config)
-            self.case_index.load()
-            logger.info("Case index loaded: %d cases", self.case_index.size)
+            if manifest_file.exists():
+                # Load existing index
+                logger.info("Loading existing hybrid case index from %s", index_path)
+                self.case_index = HybridCaseIndex.load(
+                    path=index_path,
+                    embedding_model=embedding_model
+                )
+            else:
+                # Build from source if index is missing
+                logger.info("No existing index found — building from source")
+                self.case_index = HybridCaseIndex.from_source(
+                    source_dir="scraper/processed",
+                    embedding_model=embedding_model,
+                )
+                logger.info("Built index with %d documents", len(self.case_index.store.docs))
+                self.case_index.save(index_path)
+
+            logger.info("Case index ready: %d cases", self.case_index.size)
+
         except ImportError as e:
             logger.warning("FAISS not available (%s) — case index unavailable", e)
             self.case_index = None

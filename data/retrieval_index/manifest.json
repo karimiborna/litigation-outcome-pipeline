@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "embedding_model": "<retrieval.embeddings.EmbeddingModel object at 0x17f4ca900>",
+  "reranker_model": null,
+  "num_documents": 1033
+}

@@ -1,13 +1,29 @@
-"""FAISS-based vector index for similar case retrieval."""
+"""
+Production-ready Hybrid RAG Case Index
+
+Components:
+- Dense retrieval (FAISS)
+- Sparse retrieval (BM25)
+- Reciprocal Rank Fusion (RRF)
+- Snapshot-based persistence (manifest + documents + FAISS)
+
+Key design:
+- Single embedding abstraction: EmbeddingModel
+- Single source of truth: DocumentStore
+- Fully reproducible load/save
+"""
 
 from __future__ import annotations
-
 import json
 import logging
 from pathlib import Path
+from dataclasses import dataclass
+from collections import defaultdict
+from typing import Any
 
-import faiss
 import numpy as np
+import faiss
+from rank_bm25 import BM25Okapi
 
 from retrieval.config import RetrievalConfig
 from retrieval.embeddings import EmbeddingModel
@@ -15,164 +31,294 @@ from retrieval.embeddings import EmbeddingModel
 logger = logging.getLogger(__name__)
 
 
-class CaseMetadataStore:
-    """Stores case metadata alongside the FAISS index for retrieval results."""
+# =========================================================
+# MANIFEST
+# =========================================================
 
-    def __init__(self):
-        self._cases: list[dict] = []
-
-    def add(
-        self,
-        case_number: str,
-        case_title: str,
-        outcome: str | None = None,
-        case_snippet: str | None = None,
-        **extra: str,
-    ) -> int:
-        idx = len(self._cases)
-        self._cases.append(
-            {
-                "case_number": case_number,
-                "case_title": case_title,
-                "outcome": outcome,
-                "case_snippet": case_snippet,
-                **extra,
-            }
-        )
-        return idx
-
-    def get(self, idx: int) -> dict:
-        return self._cases[idx]
-
-    def __len__(self) -> int:
-        return len(self._cases)
+@dataclass
+class IndexManifest:
+    version: int
+    embedding_model: str
+    reranker_model: str | None
+    num_documents: int
 
     def save(self, path: Path) -> None:
-        path.write_text(json.dumps(self._cases, indent=2), encoding="utf-8")
+        path.write_text(json.dumps(self.__dict__, indent=2), encoding="utf-8")
 
     @classmethod
-    def load(cls, path: Path) -> CaseMetadataStore:
+    def load(cls, path: Path) -> "IndexManifest":
+        return cls(**json.loads(path.read_text(encoding="utf-8")))
+
+
+# =========================================================
+# DOCUMENT MODEL
+# =========================================================
+
+@dataclass
+class CaseDocument:
+    id: str
+    text: str
+    metadata: dict[str, Any]
+
+
+class DocumentStore:
+    def __init__(self):
+        self.docs: list[CaseDocument] = []
+
+    def add(self, doc: CaseDocument):
+        self.docs.append(doc)
+
+    def __len__(self):
+        return len(self.docs)
+
+    def save(self, path: Path):
+        path.write_text(
+            json.dumps([d.__dict__ for d in self.docs], indent=2),
+            encoding="utf-8",
+        )
+
+    @classmethod
+    def load(cls, path: Path) -> "DocumentStore":
         store = cls()
-        store._cases = json.loads(path.read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        store.docs = [CaseDocument(**d) for d in raw]
         return store
 
 
-class SimilarCaseResult:
-    """A single similar case retrieval result."""
+# =========================================================
+# RESULT
+# =========================================================
 
-    def __init__(self, case_number: str, case_title: str, score: float, metadata: dict):
-        self.case_number = case_number
-        self.case_title = case_title
-        self.score = score
-        self.metadata = metadata
-
-    def to_dict(self) -> dict:
-        return {
-            "case_number": self.case_number,
-            "case_title": self.case_title,
-            "similarity_score": round(self.score, 4),
-            **self.metadata,
-        }
+@dataclass
+class RetrievalResult:
+    document: CaseDocument
+    score: float
+    source: str
 
 
-class CaseIndex:
-    """FAISS vector index for finding similar historical cases."""
+# =========================================================
+# DENSE RETRIEVER
+# =========================================================
 
-    def __init__(self, config: RetrievalConfig | None = None):
-        self._config = config or RetrievalConfig()
-        self._embedding_model = EmbeddingModel(config)
-        self._index: faiss.IndexFlatIP | None = None
-        self._metadata = CaseMetadataStore()
+class DenseRetriever:
 
-    @staticmethod
-    def _make_snippet(text: str, max_chars: int = 500) -> str:
-        cleaned = " ".join(text.replace("\n", " ").split())
-        return cleaned[:max_chars].strip()
+    def __init__(self, embedding_model: EmbeddingModel, documents: list[CaseDocument]):
+        self.embedding_model = embedding_model
+        self.documents = documents
+        self.index = self._build()
 
-    def build(
-        self,
-        texts: list[str],
-        case_numbers: list[str],
-        case_titles: list[str],
-        outcomes: list[str | None] | None = None,
-    ) -> None:
-        """Build the index from a list of case texts and metadata."""
-        outcomes = outcomes or [None] * len(texts)
-        logger.info("Building index from %d cases", len(texts))
+    def _build(self):
+        texts = [d.text for d in self.documents]
 
-        embeddings = self._embedding_model.embed_batch(texts)
-        dimension = embeddings.shape[1]
+        embeddings = self.embedding_model.embed_documents(texts)
+        embeddings = np.asarray(embeddings, dtype="float32")
 
-        self._index = faiss.IndexFlatIP(dimension)
-        self._index.add(embeddings.astype(np.float32))
+        index = faiss.IndexFlatIP(embeddings.shape[1])
+        index.add(embeddings)
 
-        self._metadata = CaseMetadataStore()
-        for text, cn, ct, outcome in zip(texts, case_numbers, case_titles, outcomes):
-            snippet = self._make_snippet(text)
-            self._metadata.add(
-                case_number=cn,
-                case_title=ct,
-                outcome=outcome,
-                case_snippet=snippet,
-            )
+        return index
 
-        logger.info("Index built: %d vectors, dimension=%d", self._index.ntotal, dimension)
+    def search(self, query: str, k: int):
+        
+        q = self.embedding_model.embed_query(query)
+        q = np.asarray(q, dtype="float32")[None, :]
 
-    def search(self, query_text: str, top_k: int | None = None) -> list[SimilarCaseResult]:
-        """Find the top-K most similar cases to the query text."""
-        if self._index is None or self._index.ntotal == 0:
+        scores, idx = self.index.search(q, k)
+        return list(zip(scores[0], idx[0]))
+
+
+# =========================================================
+# SPARSE RETRIEVER
+# =========================================================
+
+class SparseRetriever:
+
+    def __init__(self, documents: list[CaseDocument]):
+        self.documents = documents
+        tokenized = [d.text.lower().split() for d in documents]
+        self.bm25 = BM25Okapi(tokenized)
+
+    def search(self, query: str, k: int):
+        tokens = query.lower().split()
+        scores = self.bm25.get_scores(tokens)
+        idx = np.argsort(scores)[::-1][:k]
+        return [(scores[i], i) for i in idx]
+
+
+# =========================================================
+# RRF
+# =========================================================
+
+class RRF:
+
+    def __init__(self, k: int = 60):
+        self.k = k
+
+    def fuse(self, dense, sparse):
+        scores = defaultdict(float)
+
+        for rank, (_, i) in enumerate(dense):
+            scores[i] += 1 / (self.k + rank + 1)
+
+        for rank, (_, i) in enumerate(sparse):
+            scores[i] += 1 / (self.k + rank + 1)
+
+        return sorted(scores.items(), key=lambda x: x[1], reverse=True)
+
+
+# =========================================================
+# HYBRID INDEX
+# =========================================================
+
+class HybridCaseIndex:
+
+    VERSION = 1
+
+    def __init__(self, embedding_model: EmbeddingModel, reranker=None):
+        self.embedding_model = embedding_model
+        self.reranker = reranker
+
+        self.store = DocumentStore()
+        self.dense: DenseRetriever | None = None
+        self.sparse: SparseRetriever | None = None
+
+    # -------------------------
+    # BUILD
+    # -------------------------
+    def build(self, documents: list[CaseDocument]):
+
+        for doc in documents:
+            self.store.add(doc)
+
+        self.dense = DenseRetriever(self.embedding_model, self.store.docs)
+        self.sparse = SparseRetriever(self.store.docs)
+
+        logger.info("Built index with %d docs", len(self.store))
+
+    # -------------------------
+    # QUERY
+    # -------------------------
+    def query(self, text: str, k: int = 5):
+
+        if not self.dense or not self.sparse:
             return []
 
-        k = top_k or self._config.top_k
-        k = min(k, self._index.ntotal)
+        dense = self.dense.search(text, k * 3)
+        sparse = self.sparse.search(text, k * 3)
 
-        query_embedding = self._embedding_model.embed(query_text)
-        query_embedding = query_embedding.reshape(1, -1).astype(np.float32)
+        fused = RRF().fuse(dense, sparse)
 
-        scores, indices = self._index.search(query_embedding, k)
+        return [
+            RetrievalResult(
+                document=self.store.docs[i],
+                score=score,
+                source="fusion",
+            )
+            for i, score in fused[:k]
+        ]
 
-        results: list[SimilarCaseResult] = []
-        for score, idx in zip(scores[0], indices[0], strict=False):
-            if idx < 0:
+    # -------------------------
+    # SAVE
+    # -------------------------
+    def save(self, path: str):
+
+        path = Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+
+        import faiss
+
+        faiss.write_index(self.dense.index, str(path / "dense.faiss"))
+        self.store.save(path / "documents.json")
+
+        IndexManifest(
+            version=self.VERSION,
+            embedding_model=str(self.embedding_model),
+            reranker_model=str(self.reranker) if self.reranker else None,
+            num_documents=len(self.store),
+        ).save(path / "manifest.json")
+
+        logger.info("Saved index to %s", path)
+
+    # -------------------------
+    # LOAD
+    # -------------------------
+    @classmethod
+    def load(cls, path: str, embedding_model: EmbeddingModel):
+
+        path = Path(path)
+
+        manifest = IndexManifest.load(path / "manifest.json")
+        store = DocumentStore.load(path / "documents.json")
+
+        import faiss
+
+        obj = cls(embedding_model=embedding_model)
+        obj.store = store
+
+        obj.dense = DenseRetriever(embedding_model, store.docs)
+        obj.dense.index = faiss.read_index(str(path / "dense.faiss"))
+
+        obj.sparse = SparseRetriever(store.docs)
+
+        logger.info(
+            "Loaded v%d with %d docs",
+            manifest.version,
+            manifest.num_documents,
+        )
+
+        return obj
+
+    # -------------------------
+    # SOURCE BUILD
+    # -------------------------
+    @classmethod
+    def from_source(cls, source_dir: str | Path, embedding_model: EmbeddingModel):
+
+        source_dir = Path(source_dir)
+
+        case_files: dict[str, list[Path]] = defaultdict(list)
+
+        for file_path in source_dir.glob("*.txt"):
+            case_id = file_path.name.split("_", 1)[0]
+            case_files[case_id].append(file_path)
+
+        docs: list[CaseDocument] = []
+
+        for case_id, files in case_files.items():
+
+            parts = []
+
+            for fp in files:
+                try:
+                    parts.append(fp.read_text(encoding="utf-8").strip())
+                except UnicodeDecodeError:
+                    parts.append(fp.read_text(encoding="latin-1").strip())
+
+            text = "\n\n".join([p for p in parts if p])
+
+            if not text:
                 continue
-            if score < self._config.similarity_threshold:
-                continue
-            meta = self._metadata.get(int(idx))
-            results.append(
-                SimilarCaseResult(
-                    case_number=meta["case_number"],
-                    case_title=meta["case_title"],
-                    score=float(score),
-                    metadata={
-                        k: v for k, v in meta.items() if k not in ("case_number", "case_title")
-                    },
+
+            docs.append(
+                CaseDocument(
+                    id=case_id,
+                    text=text,
+                    metadata={"case_number": case_id, "num_files": len(files)},
                 )
             )
 
-        return results
+        index = cls(embedding_model)
+        index.build(docs)
 
-    def save(self, directory: str | Path | None = None) -> None:
-        """Persist the FAISS index and metadata to disk."""
-        if self._index is None:
-            raise RuntimeError("No index to save — call build() first")
+        return index
 
-        path = Path(directory or self._config.index_path)
-        path.mkdir(parents=True, exist_ok=True)
-
-        faiss.write_index(self._index, str(path / "index.faiss"))
-        self._metadata.save(path / "metadata.json")
-        logger.info("Index saved to %s", path)
-
-    def load(self, directory: str | Path | None = None) -> None:
-        """Load a previously saved index from disk."""
-        path = Path(directory or self._config.index_path)
-
-        self._index = faiss.read_index(str(path / "index.faiss"))
-        self._metadata = CaseMetadataStore.load(path / "metadata.json")
-        logger.info("Index loaded: %d vectors", self._index.ntotal)
-
+    # -------------------------
+    # UTIL
+    # -------------------------
     @property
     def size(self) -> int:
-        if self._index is None:
-            return 0
-        return self._index.ntotal
+        return len(self.store)
+
+
+print("INDEX MODULE LOADED")
+print("HybridCaseIndex in globals:", "HybridCaseIndex" in globals())

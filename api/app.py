@@ -307,15 +307,14 @@ def _parse_json_response(content: str) -> dict:
 def _similar_cases_for_prompt(best_cases: list[SimilarCaseItem]) -> list[dict]:
     return [
         {
-            "case_number": case.case_number,
-            "case_title": case.case_title,
-            "outcome": case.outcome or "unknown",
-            "similarity_score": case.similarity_score,
-            "case_snippet": case.case_snippet or "",
-        }
+            "case_number": getattr(case, "case_number", "unknown"),
+            "case_title": getattr(case, "case_title", "unknown"),
+            "outcome": getattr(case, "outcome", "unknown"),
+            "similarity_score": getattr(case, "similarity_score", 0.0),
+            "case_snippet": getattr(case, "case_snippet", ""),
+        }        
         for case in best_cases
     ]
-
 
 def _fallback_similarity_advice(best_cases: list[SimilarCaseItem]) -> tuple[str, str]:
     winner = best_cases[0]
@@ -361,14 +360,14 @@ async def _build_rag_context(case_text: str) -> dict:
             "advice_evaluation": None,
         }
 
-    results = app_state.case_index.search(case_text, top_k=5)
+    results = app_state.case_index.query(case_text, k=5)
     similar_cases = [
         SimilarCaseItem(
-            case_number=r.case_number,
-            case_title=r.case_title,
-            similarity_score=r.score,
-            outcome=r.metadata.get("outcome"),
-            case_snippet=r.metadata.get("case_snippet"),
+            case_number=r.document.id,
+            case_title=r.document.metadata.get("case_title", r.document.id),
+            outcome=r.document.metadata.get("outcome", "unknown"),
+            similarity_score=getattr(r, "score", 0.0),
+            case_snippet=r.document.metadata.get("case_snippet", "")
         )
         for r in results
     ]
@@ -391,32 +390,39 @@ async def _build_rag_context(case_text: str) -> dict:
 
 @app.post("/similar", response_model=SimilarCaseResponse)
 async def similar_cases(request: SimilarCaseRequest) -> SimilarCaseResponse:
-    """Find similar historical cases."""
+    """Find similar historical cases using the hybrid case index."""
+    
     if app_state.case_index is None:
         raise HTTPException(status_code=503, detail="Case index not available")
 
-    results = app_state.case_index.search(request.case_text, top_k=request.top_k)
+    # Run the query through the hybrid index
+    results = app_state.case_index.query(request.case_text, k=request.k)
 
+    # Convert RetrievalResult -> SimilarCaseItem
     items = [
         SimilarCaseItem(
-            case_number=r.case_number,
-            case_title=r.case_title,
+            case_number=r.document.id,
+            case_title=r.document.metadata.get("case_title", r.document.id),
             similarity_score=r.score,
-            outcome=r.metadata.get("outcome"),
-            case_snippet=r.metadata.get("case_snippet"),
+            outcome=r.document.metadata.get("outcome"),
+            case_snippet=r.document.metadata.get("case_snippet") or r.document.text[:300],
         )
         for r in results
     ]
+
     best_cases = _select_best_similar_cases(items)
 
+    # Build explanation
     if items:
         outcomes = [i.outcome for i in items if i.outcome]
         explanation = f"Found {len(items)} similar cases."
         if outcomes:
-            explanation += f" Most common outcome: {max(set(outcomes), key=outcomes.count)}."
+            most_common = max(set(outcomes), key=outcomes.count)
+            explanation += f" Most common outcome: {most_common}."
     else:
         explanation = "No similar cases found above the similarity threshold."
 
+    # Optional: build advice and evaluate RAG
     comparison_insights, advice = await _build_similarity_advice(request.case_text, best_cases)
     advice_evaluation = await _evaluate_rag_advice(
         request.case_text,
@@ -434,8 +440,6 @@ async def similar_cases(request: SimilarCaseRequest) -> SimilarCaseResponse:
         advice=advice,
         advice_evaluation=advice_evaluation,
     )
-
-
 @app.post("/counterfactual", response_model=CounterfactualResponse)
 async def counterfactual(request: CounterfactualRequest) -> CounterfactualResponse:
     """Analyze how feature changes would affect the predicted outcome."""
