@@ -77,12 +77,19 @@ def build_extraction_prompt(
 
 
 SIMILARITY_ADVICE_SYSTEM = (
-    "You are a legal strategy assistant."
-    " Review a new small claims case and a set of historical cases "
-    "that were selected for similarity."
-    " Your answer should compare the new case to the best historical cases, "
-    "identify what separates the successful cases from"
-    " the current one, and give concise, practical advice."
+    "You are a legal strategy assistant. You will review a new small claims case, "
+    "a set of similar historical cases, and a quantitative counterfactual analysis "
+    "showing the top changes that would shift the predicted outcome.\n"
+    "Your advice must:\n"
+    "1. Compare the new case to the best historical cases.\n"
+    "2. Reference the top-5 perturbations by name and explain what each would mean "
+    "for this user.\n"
+    "3. When the perturbation findings and historical patterns agree, reinforce them "
+    "together. When they disagree, surface the divergence — for example, "
+    "'our model estimates +X% from doing Y, though in case Z the same change "
+    "did not help because…'.\n"
+    "4. Treat any perturbation tagged 'load-bearing — keep this' as a warning "
+    "(an existing strength to preserve), not as an action to take.\n"
     "Respond with only JSON, no markdown or extra text."
 )
 
@@ -90,9 +97,16 @@ SIMILARITY_ADVICE_SYSTEM = (
 def build_similarity_advice_prompt(
     case_text: str,
     retrieved_cases: list[dict[str, str]],
+    perturbation_summary: str | None = None,
     max_text_length: int = 3000,
 ) -> list[dict[str, str]]:
-    """Build the chat messages for retrieval-based advice generation."""
+    """Build the chat messages for retrieval-based advice generation.
+
+    ``perturbation_summary`` is the pre-formatted top-5 counterfactual block
+    produced by :func:`counterfactual.analyzer.format_for_llm`. When provided
+    the advice is grounded in both the retrieved cases and the perturbation
+    findings.
+    """
     truncated_text = case_text[:max_text_length]
     if len(case_text) > max_text_length:
         truncated_text += "\n[... text truncated ...]"
@@ -112,16 +126,20 @@ def build_similarity_advice_prompt(
         )
 
     user_content = (
-        "A new case is described above, followed by the retrieved cases. "
+        "A new case is described above, followed by the retrieved cases and the "
+        "counterfactual analysis. "
         "Please answer with JSON only in this format:\n"
         "{\n"
         '  "comparison_insights": '
         "<brief description of how the best historical cases compare to the new case>,\n"
-        '  "advice": <concise practical advice for'
-        " the plaintiff based on the retrieved examples>\n"
+        '  "advice": <concise practical advice for the plaintiff that explicitly '
+        "references the top-5 perturbations and reconciles them with the retrieved "
+        "examples>\n"
         "}\n"
     )
     user_content += "\n\n" + "\n".join(case_sections)
+    if perturbation_summary:
+        user_content += "\n\n" + perturbation_summary
 
     return [
         {"role": "system", "content": SIMILARITY_ADVICE_SYSTEM},
@@ -131,8 +149,12 @@ def build_similarity_advice_prompt(
 
 RAG_ADVICE_JUDGE_SYSTEM = (
     "You are an evaluator for retrieval-grounded legal information."
-    " Judge whether the advice is faithful to the current case and retrieved cases,"
-    " practical for a small claims litigant, clear, and appropriately cautious."
+    " Judge whether the advice is faithful to the current case, the retrieved "
+    "cases, and the counterfactual analysis it cites — including whether any "
+    "numeric deltas or feature names quoted in the advice match the perturbation "
+    "summary."
+    " Also judge whether the advice is practical for a small claims litigant, "
+    "clear, and appropriately cautious."
     " Do not decide the legal merits yourself. Respond with only JSON."
 )
 
@@ -142,9 +164,15 @@ def build_rag_advice_judge_prompt(
     retrieved_cases: list[dict[str, str]],
     advice: str,
     comparison_insights: str,
+    perturbation_summary: str | None = None,
     max_text_length: int = 3000,
 ) -> list[dict[str, str]]:
-    """Build messages for LLM-as-a-judge evaluation of RAG advice."""
+    """Build messages for LLM-as-a-judge evaluation of RAG advice.
+
+    When ``perturbation_summary`` is provided the judge sees the same top-5
+    block the advisor used, so it can verify the advice's quoted feature
+    names and deltas are accurate.
+    """
     truncated_text = case_text[:max_text_length]
     if len(case_text) > max_text_length:
         truncated_text += "\n[... text truncated ...]"
@@ -167,6 +195,10 @@ def build_rag_advice_judge_prompt(
         + "\n\n"
         f"Comparison insights:\n{comparison_insights}\n\n"
         f"Advice:\n{advice}\n\n"
+    )
+    if perturbation_summary:
+        user_content += f"{perturbation_summary}\n\n"
+    user_content += (
         "Return JSON only in this format:\n"
         "{\n"
         '  "score": <integer 1-5, where 5 is excellent>,\n'

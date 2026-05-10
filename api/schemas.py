@@ -73,6 +73,7 @@ class CounterfactualItem(BaseModel):
     feature: str
     original_value: float
     new_value: float
+    direction: str = "helpful"
     win_probability_delta: float
     monetary_outcome_delta: float
     description: str
@@ -137,3 +138,4 @@ class LexRatioAnalysisResponse(BaseModel):
     best_cases: list[SimilarCaseItem] = Field(default_factory=list)
     comparison_insights: str | None = None
     advice_evaluation: RagAdviceEvaluation | None = None
+    top_recommendations: list[CounterfactualItem] = Field(default_factory=list)

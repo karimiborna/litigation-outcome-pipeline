@@ -16,6 +16,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.dependencies import app_state
+from counterfactual.analyzer import (
+    CounterfactualResult,
+    format_for_llm,
+    select_top_recommendations,
+)
 from api.schemas import (
     BatchPredictionRequest,
     BatchPredictionResponse,
@@ -154,7 +159,7 @@ async def analyze_case(request: LexRatioAnalysisRequest) -> LexRatioAnalysisResp
     )
     feature_vector = await app_state.feature_extractor.extract(case)
     prediction = await asyncio.to_thread(_run_prediction_sync, feature_vector, "LEXRATIO")
-    rag_context = await _build_rag_context(case_text)
+    rag_context = await _build_rag_context(case_text, feature_vector=feature_vector)
 
     return _build_frontend_analysis_response(request, feature_vector, prediction, rag_context)
 
@@ -199,7 +204,9 @@ def _select_best_similar_cases(
 
 
 async def _build_similarity_advice(
-    case_text: str, best_cases: list[SimilarCaseItem]
+    case_text: str,
+    best_cases: list[SimilarCaseItem],
+    perturbation_summary: str | None = None,
 ) -> tuple[str, str]:
     config = FeaturesConfig()
     if not best_cases:
@@ -212,7 +219,9 @@ async def _build_similarity_advice(
         return _fallback_similarity_advice(best_cases)
 
     retrieved_cases = _similar_cases_for_prompt(best_cases)
-    messages = build_similarity_advice_prompt(case_text, retrieved_cases)
+    messages = build_similarity_advice_prompt(
+        case_text, retrieved_cases, perturbation_summary=perturbation_summary
+    )
     body = {
         "model": config.llm_model,
         "messages": messages,
@@ -249,6 +258,7 @@ async def _evaluate_rag_advice(
     best_cases: list[SimilarCaseItem],
     comparison_insights: str,
     advice: str,
+    perturbation_summary: str | None = None,
 ) -> RagAdviceEvaluation:
     config = FeaturesConfig()
     if not best_cases:
@@ -267,6 +277,7 @@ async def _evaluate_rag_advice(
         retrieved_cases=retrieved_cases,
         advice=advice,
         comparison_insights=comparison_insights,
+        perturbation_summary=perturbation_summary,
     )
     body = {
         "model": config.llm_model,
@@ -350,7 +361,30 @@ def _fallback_rag_advice_evaluation(
     )
 
 
-async def _build_rag_context(case_text: str) -> dict:
+async def _build_perturbation_context(
+    feature_vector: FeatureVector | None,
+) -> tuple[str | None, list[CounterfactualResult]]:
+    """Run counterfactual analysis and produce both the LLM-readable summary
+    and the structured top-5 results. Returns ``(None, [])`` when the analyzer
+    is unavailable or fails."""
+    if feature_vector is None or app_state.counterfactual_analyzer is None:
+        return None, []
+    try:
+        all_results = await asyncio.to_thread(
+            app_state.counterfactual_analyzer.analyze, feature_vector
+        )
+    except Exception:
+        logger.exception("Counterfactual analysis failed; skipping perturbation summary")
+        return None, []
+    top_results = select_top_recommendations(all_results, top_n=5)
+    return format_for_llm(top_results), top_results
+
+
+async def _build_rag_context(
+    case_text: str, feature_vector: FeatureVector | None = None
+) -> dict:
+    perturbation_summary, top_results = await _build_perturbation_context(feature_vector)
+
     if app_state.case_index is None:
         return {
             "similar_cases": [],
@@ -358,6 +392,7 @@ async def _build_rag_context(case_text: str) -> dict:
             "comparison_insights": "No retrieval index is available for comparison.",
             "advice": None,
             "advice_evaluation": None,
+            "top_recommendations": top_results,
         }
 
     results = app_state.case_index.query(case_text, k=5)
@@ -372,12 +407,15 @@ async def _build_rag_context(case_text: str) -> dict:
         for r in results
     ]
     best_cases = _select_best_similar_cases(similar_cases)
-    comparison_insights, advice = await _build_similarity_advice(case_text, best_cases)
+    comparison_insights, advice = await _build_similarity_advice(
+        case_text, best_cases, perturbation_summary=perturbation_summary
+    )
     advice_evaluation = await _evaluate_rag_advice(
         case_text,
         best_cases,
         comparison_insights,
         advice,
+        perturbation_summary=perturbation_summary,
     )
     return {
         "similar_cases": similar_cases,
@@ -385,6 +423,7 @@ async def _build_rag_context(case_text: str) -> dict:
         "comparison_insights": comparison_insights,
         "advice": advice,
         "advice_evaluation": advice_evaluation,
+        "top_recommendations": top_results,
     }
 
 
@@ -458,16 +497,25 @@ async def counterfactual(request: CounterfactualRequest) -> CounterfactualRespon
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    # When the user did not pass custom perturbations, surface the curated top-5;
+    # otherwise pass through whatever they asked about.
+    surfaced = (
+        select_top_recommendations(results, top_n=5)
+        if request.perturbations is None
+        else results
+    )
+
     items = [
         CounterfactualItem(
             feature=r.feature_name,
             original_value=r.original_value,
             new_value=r.new_value,
+            direction=r.direction,
             win_probability_delta=round(r.win_prob_delta, 4),
             monetary_outcome_delta=round(r.monetary_delta, 2),
-            description=r._describe(),
+            description=r.describe(),
         )
-        for r in results
+        for r in surfaced
     ]
 
     original_win = results[0].original_win_prob if results else 0.0
@@ -502,7 +550,7 @@ async def analyze_lexratio(request: LexRatioAnalysisRequest) -> LexRatioAnalysis
     # Extract features and run prediction
     feature_vector = await app_state.feature_extractor.extract(case)
     prediction = await asyncio.to_thread(_run_prediction_sync, feature_vector, None)
-    rag_context = await _build_rag_context(request.case_text)
+    rag_context = await _build_rag_context(request.case_text, feature_vector=feature_vector)
 
     return _build_frontend_analysis_response(request, feature_vector, prediction, rag_context)
 
@@ -728,6 +776,20 @@ def _build_frontend_analysis_response(
     rag_context = rag_context or {}
     advice = rag_context.get("advice") or default_advice
 
+    top_results: list[CounterfactualResult] = rag_context.get("top_recommendations") or []
+    top_recommendations = [
+        CounterfactualItem(
+            feature=r.feature_name,
+            original_value=r.original_value,
+            new_value=r.new_value,
+            direction=r.direction,
+            win_probability_delta=round(r.win_prob_delta, 4),
+            monetary_outcome_delta=round(r.monetary_delta, 2),
+            description=r.describe(),
+        )
+        for r in top_results
+    ]
+
     return LexRatioAnalysisResponse(
         win_probability=win_probability,
         expected_award=round(expected_award, 2),
@@ -741,4 +803,5 @@ def _build_frontend_analysis_response(
         best_cases=rag_context.get("best_cases") or [],
         comparison_insights=rag_context.get("comparison_insights"),
         advice_evaluation=rag_context.get("advice_evaluation"),
+        top_recommendations=top_recommendations,
     )
