@@ -323,7 +323,7 @@ def _similar_cases_for_prompt(best_cases: list[SimilarCaseItem]) -> list[dict]:
             "outcome": getattr(case, "outcome", "unknown"),
             "similarity_score": getattr(case, "similarity_score", 0.0),
             "case_snippet": getattr(case, "case_snippet", ""),
-        }        
+        }
         for case in best_cases
     ]
 
@@ -430,7 +430,7 @@ async def _build_rag_context(
 @app.post("/similar", response_model=SimilarCaseResponse)
 async def similar_cases(request: SimilarCaseRequest) -> SimilarCaseResponse:
     """Find similar historical cases using the hybrid case index."""
-    
+
     if app_state.case_index is None:
         raise HTTPException(status_code=503, detail="Case index not available")
 

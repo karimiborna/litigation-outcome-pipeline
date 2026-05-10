@@ -9,7 +9,6 @@ from api.prompts import (
     build_similarity_advice_prompt,
 )
 
-
 _RETRIEVED = [
     {
         "case_number": "CSM26000001",

@@ -18,7 +18,6 @@ from counterfactual.analyzer import (
 from features.schema import FeatureVector
 from models.dataset import MODEL_FEATURE_COLUMNS
 
-
 # A small set of features whose absence/presence we expect to move the fake
 # classifier's predicted win probability.
 _EVIDENCE_BOOLS = (
@@ -270,9 +269,7 @@ def test_null_sentinel_treated_as_missing_helpful(analyzer):
     case = _weak_case()
     case.has_photos_or_physical_evidence = None  # -> NULL_SENTINEL
     results = analyzer.analyze(case)
-    photo_results = [
-        r for r in results if r.feature_name == "feat_has_photos_or_physical_evidence"
-    ]
+    photo_results = [r for r in results if r.feature_name == "feat_has_photos_or_physical_evidence"]
     assert len(photo_results) == 1
     assert _is_null(photo_results[0].original_value)
     assert photo_results[0].new_value == 1.0
@@ -331,12 +328,8 @@ def test_helpful_then_harmful_are_distinct_per_state():
     """The same feature flipped from a different starting state has the opposite direction."""
     weak_results = analyzer_factory().analyze(_weak_case())
     strong_results = analyzer_factory().analyze(_strong_case())
-    weak_attorney = next(
-        r for r in weak_results if r.feature_name == "feat_user_has_attorney"
-    )
-    strong_attorney = next(
-        r for r in strong_results if r.feature_name == "feat_user_has_attorney"
-    )
+    weak_attorney = next(r for r in weak_results if r.feature_name == "feat_user_has_attorney")
+    strong_attorney = next(r for r in strong_results if r.feature_name == "feat_user_has_attorney")
     assert weak_attorney.direction == "helpful"
     assert strong_attorney.direction == "harmful"
 

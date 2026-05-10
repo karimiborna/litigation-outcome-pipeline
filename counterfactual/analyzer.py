@@ -146,9 +146,7 @@ def format_for_llm(results: list[CounterfactualResult]) -> str:
     if not results:
         return "(no actionable perturbations identified for this case)"
 
-    lines = [
-        "Top counterfactual changes (sorted by predicted impact on win probability):"
-    ]
+    lines = ["Top counterfactual changes (sorted by predicted impact on win probability):"]
     for idx, r in enumerate(results, start=1):
         name = FEATURE_DISPLAY_NAMES.get(r.feature_name, r.feature_name)
         state = _state_phrase(r.feature_name, r.original_value, r.new_value)
@@ -342,9 +340,7 @@ class CounterfactualAnalyzer:
             out.append({"feature": feat, "new_value": clamped})
         return out
 
-    def _auto_perturbations_v2(
-        self, base_input: dict[str, float]
-    ) -> list[dict[str, Any]]:
+    def _auto_perturbations_v2(self, base_input: dict[str, float]) -> list[dict[str, Any]]:
         """Generate the curated v2 perturbation set."""
         candidates: list[dict[str, Any]] = []
 
@@ -369,9 +365,7 @@ class CounterfactualAnalyzer:
                 current = 0.0
             current = max(0.0, current)
             for witness in range(int(current) + 1, WITNESS_COUNT_MAX + 1):
-                candidates.append(
-                    {"feature": WITNESS_COUNT_FEATURE, "new_value": float(witness)}
-                )
+                candidates.append({"feature": WITNESS_COUNT_FEATURE, "new_value": float(witness)})
 
         return candidates
 
@@ -398,11 +392,7 @@ class CounterfactualAnalyzer:
             prev_delta = r.win_prob_delta
 
         kept_ids = {id(r) for r in kept}
-        return [
-            r
-            for r in results
-            if r.feature_name != WITNESS_COUNT_FEATURE or id(r) in kept_ids
-        ]
+        return [r for r in results if r.feature_name != WITNESS_COUNT_FEATURE or id(r) in kept_ids]
 
     def _classify_direction(
         self, feature_name: str, original_value: float, new_value: float

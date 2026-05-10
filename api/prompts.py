@@ -190,9 +190,7 @@ def build_rag_advice_judge_prompt(
 
     user_content = (
         "Evaluate this retrieval-augmented advice.\n\n"
-        f"Current case text:\n{truncated_text}\n\n"
-        + "\n".join(case_sections)
-        + "\n\n"
+        f"Current case text:\n{truncated_text}\n\n" + "\n".join(case_sections) + "\n\n"
         f"Comparison insights:\n{comparison_insights}\n\n"
         f"Advice:\n{advice}\n\n"
     )

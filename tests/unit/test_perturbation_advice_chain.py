@@ -20,7 +20,6 @@ from counterfactual.analyzer import (
 )
 from tests.unit.test_counterfactual import FakeClassifier, FakeRegressor, _weak_case
 
-
 _RETRIEVED_CASES = [
     {
         "case_number": "CSM26000001",
