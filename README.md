@@ -90,13 +90,15 @@ Everything else (proof of service, continuances, scheduling, subpoenas, etc.) is
 
 ### What Needs to Happen Next
 
-1. **Finish enumeration + download** — Complete the remaining case number ranges and run `scrape download-cases` to grab PDFs. Also run `scrape scrape --date <date>` for recent calendar dates.
-2. **Extract text** — Run the Colab notebook to OCR scanned PDFs on GPU.
-3. **Extract labels** — The Colab notebook's Step 5 sends outcome documents to GPT-4o-mini and produces `labels.json` with structured outcomes.
-4. **Extract features** — Run LLM feature extraction on claim text (requires `LLM_API_KEY` in `.env`).
-5. **Train models** — Use the features module output + labels to train the classifier and regressor via MLflow.
-6. **Build retrieval index** — Embed all case texts and build the FAISS index.
-7. **Deploy** — Containerize and deploy to AWS ECS.
+The end-to-end pipeline (scrape → extract → label → feature → train → retrieve → API) is wired up and a real `dataset.csv` exists. The remaining work is to make the system meaningfully useful, in this priority order:
+
+1. **Perturbation analysis** — `counterfactual/analyzer.py` runs end-to-end but the v2 path is crude: `FEATURE_CONSTRAINTS` still holds v1 names so `_clamp()` is a no-op on v2, `_auto_perturbations_v2` flips every binary (including non-actionable ones like `feat_user_is_plaintiff` and damages-breakdown booleans), and the curated perturbable set described in `counterfactual/CLAUDE.md` is not implemented. Restrict perturbations to actionable features and add real constraints for the v2 columns.
+2. **RAG + LLM explanation layer** — retrieval (`HybridCaseIndex`: FAISS dense + BM25 sparse + RRF fusion) returns ranked cases but nothing consumes them. Add an LLM step that takes the top-K similar cases (with their outcomes joined from `dataset.csv`) and the top counterfactual deltas, and produces a single grounded narrative: how the retrieved cases relate to the user's case, and what the perturbation results mean in plain language.
+3. **Model optimization** — hyperparameter tuning on the GradientBoosting classifier/regressor, calibration of `predict_proba`, and proper CV beyond the current defaults in `scripts/train_models.py`.
+4. **Feature selection** — empirically pare `MODEL_FEATURE_COLUMNS` down to features that actually move metrics. The current 51-column matrix was hand-designed and includes columns that may carry no signal.
+5. **Missing feature verification** — audit gaps between the documented feature set and what's actually trained. The contract-detail booleans (`contract_is_written`, `contract_is_signed_by_both_parties`, `contract_specifies_deadline_or_term`, `contract_specifies_payment_amount`) are extracted by the LLM but absent from `RAW_MODEL_FEATURE_COLUMNS`; decide whether to add them back or remove them from the schema.
+
+Data collection (enumeration, download, OCR, label/feature extraction) and deployment to AWS ECS continue in parallel as the dataset grows, but they're no longer the gating items.
 
 ### All CLI Commands
 
