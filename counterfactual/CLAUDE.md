@@ -93,11 +93,13 @@ For surfacing top-5: sort all results by `|win_prob_delta|`. Take helpful ones f
 
 GBM predict on a single row is ~2–4ms; batching 27+ rows costs roughly the same as 1–2 single-row calls. Whole perturbation loop should land in ~10–15ms after batching, vs ~80ms today. The dominant `/counterfactual` cost remains the upstream LLM feature extraction.
 
-## LLM-integration plan (next, not yet built)
+## LLM integration (shipped)
 
-The perturbation analysis isn't surfaced anywhere user-facing yet. Plan: make the existing similarity-advice LLM call ground its advice in the top-5 perturbations (Option 1, sub-option B from the design discussion). One LLM call, perturbations rendered as a structured intermediate the LLM can cite.
+The perturbation analysis is surfaced two ways: the existing similarity-advice LLM call grounds its prose in the top-5 (instructed to reference each by name and reconcile with retrieved cases), and the same top-5 ships as a structured `top_recommendations: list[CounterfactualItem]` on `LexRatioAnalysisResponse`. The judge prompt receives the same block so it can fact-check quoted deltas.
 
-### Build order (bottom-up)
+### Components
+
+The build below was followed bottom-up. All steps are now live; the section is kept as a record of what fits where.
 
 1. `counterfactual/analyzer.py` — add `FEATURE_DISPLAY_NAMES` (28-entry dict) + `format_for_llm(results)` helper. Pure data-in/string-out, fully unit-testable. Output sample:
 

@@ -50,10 +50,15 @@ counterfactual/ (feature perturbation analysis)
 
 ## Roadmap (priority order)
 
-The pipeline runs end-to-end on `dataset.csv`. The remaining work is to make the system actually useful. Tackle in this order:
+### Recently shipped
 
-1. **Perturbation analysis** — `counterfactual/analyzer.py` runs but the v2 path is half-baked: `FEATURE_CONSTRAINTS` is v1-only (so `_clamp` is a no-op on v2), `_auto_perturbations_v2` flips every binary including non-actionable ones (`feat_user_is_plaintiff`, damages-breakdown, jurisdictional), and the curated perturbable set described in `counterfactual/CLAUDE.md` is not implemented in code. Restrict to actionable features and add real v2 constraints.
-2. **RAG + LLM explanation layer** — `HybridCaseIndex` (FAISS dense + BM25 sparse + RRF fusion in `retrieval/index.py`) returns ranked cases but nothing consumes them. Add an LLM step that takes top-K similar cases (with outcomes joined from `dataset.csv`) plus the top counterfactual deltas and produces a single grounded narrative explaining how retrieved cases relate to the user's case and what the perturbation deltas mean. The `reranker` slot on `HybridCaseIndex` is wired but unused — decide whether to use it for cross-encoder reranking or drop it.
-3. **Model optimization** — hyperparameter tuning, probability calibration, proper CV beyond `scripts/train_models.py` defaults.
-4. **Feature selection** — empirically pare `MODEL_FEATURE_COLUMNS` (currently 51 columns, including 8 one-hot category dummies) down to features that actually move metrics.
-5. **Missing feature verification** — audit gaps between the documented schema and `RAW_MODEL_FEATURE_COLUMNS`. Known gap: contract-detail booleans (`contract_is_written`, `contract_is_signed_by_both_parties`, `contract_specifies_deadline_or_term`, `contract_specifies_payment_amount`) are in `FeatureVector` but absent from training columns. Decide whether to include or remove from the schema.
+- **Perturbation analysis (v2)** — `counterfactual/analyzer.py` now operates on a curated 28-feature set (only what a litigant can actually change), real v2 `FEATURE_CONSTRAINTS`, batched predicts, helpful/harmful direction tagging, witness-count stepping with early-stop, and a `select_top_recommendations` helper.
+- **LLM advice grounded in perturbations** — the existing similarity-advice + judge LLM calls now receive a `format_for_llm` summary of the top-5 perturbations and are instructed to reference them, reconcile them with retrieved cases, and treat load-bearing flips as warnings. The `LexRatioAnalysisResponse` carries both the prose `advice` and a structured `top_recommendations: list[CounterfactualItem]` for the frontend.
+
+### Open, in priority order
+
+1. **Surface `top_recommendations` in the LexRatio frontend** — the data ships in `/api/analyze-lexratio` but `lexratio.html` doesn't render the top-5 yet.
+2. **Model optimization** — hyperparameter tuning, probability calibration, proper CV beyond `scripts/train_models.py` defaults.
+3. **Feature selection** — empirically pare `MODEL_FEATURE_COLUMNS` (currently 51 columns, including 8 one-hot category dummies) down to features that actually move metrics.
+4. **Missing feature verification** — audit gaps between the documented schema and `RAW_MODEL_FEATURE_COLUMNS`. Known gap: contract-detail booleans (`contract_is_written`, `contract_is_signed_by_both_parties`, `contract_specifies_deadline_or_term`, `contract_specifies_payment_amount`) are in `FeatureVector` but absent from training columns. Decide whether to include or remove from the schema.
+5. **Decide on the `HybridCaseIndex.reranker` slot** — wired but unused. Either plug in a cross-encoder reranker or drop the slot.

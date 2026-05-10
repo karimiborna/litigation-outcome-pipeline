@@ -90,13 +90,20 @@ Everything else (proof of service, continuances, scheduling, subpoenas, etc.) is
 
 ### What Needs to Happen Next
 
-The end-to-end pipeline (scrape → extract → label → feature → train → retrieve → API) is wired up and a real `dataset.csv` exists. The remaining work is to make the system meaningfully useful, in this priority order:
+The end-to-end pipeline (scrape → extract → label → feature → train → retrieve → API) is wired up and a real `dataset.csv` exists.
 
-1. **Perturbation analysis** — `counterfactual/analyzer.py` runs end-to-end but the v2 path is crude: `FEATURE_CONSTRAINTS` still holds v1 names so `_clamp()` is a no-op on v2, `_auto_perturbations_v2` flips every binary (including non-actionable ones like `feat_user_is_plaintiff` and damages-breakdown booleans), and the curated perturbable set described in `counterfactual/CLAUDE.md` is not implemented. Restrict perturbations to actionable features and add real constraints for the v2 columns.
-2. **RAG + LLM explanation layer** — retrieval (`HybridCaseIndex`: FAISS dense + BM25 sparse + RRF fusion) returns ranked cases but nothing consumes them. Add an LLM step that takes the top-K similar cases (with their outcomes joined from `dataset.csv`) and the top counterfactual deltas, and produces a single grounded narrative: how the retrieved cases relate to the user's case, and what the perturbation results mean in plain language.
-3. **Model optimization** — hyperparameter tuning on the GradientBoosting classifier/regressor, calibration of `predict_proba`, and proper CV beyond the current defaults in `scripts/train_models.py`.
-4. **Feature selection** — empirically pare `MODEL_FEATURE_COLUMNS` down to features that actually move metrics. The current 51-column matrix was hand-designed and includes columns that may carry no signal.
-5. **Missing feature verification** — audit gaps between the documented feature set and what's actually trained. The contract-detail booleans (`contract_is_written`, `contract_is_signed_by_both_parties`, `contract_specifies_deadline_or_term`, `contract_specifies_payment_amount`) are extracted by the LLM but absent from `RAW_MODEL_FEATURE_COLUMNS`; decide whether to add them back or remove them from the schema.
+**Recently shipped:**
+
+- **Perturbation analysis (v2)** — `counterfactual/analyzer.py` operates on a curated 28-feature set (only features a litigant can actually change), real v2 `FEATURE_CONSTRAINTS`, batched predicts, helpful/harmful direction tagging, witness-count stepping with early-stop, and a `select_top_recommendations` helper.
+- **LLM advice grounded in perturbations** — the similarity-advice and judge LLM calls now receive a top-5 perturbation block (`format_for_llm`) and are instructed to reference it, reconcile with retrieved cases, and treat load-bearing flips as warnings. `LexRatioAnalysisResponse` carries both the prose `advice` and a structured `top_recommendations`.
+
+**Remaining work, in priority order:**
+
+1. **Surface `top_recommendations` in the LexRatio frontend** — the data ships in `/api/analyze-lexratio` but `lexratio.html` doesn't render the top-5 yet.
+2. **Model optimization** — hyperparameter tuning on the GradientBoosting classifier/regressor, calibration of `predict_proba`, and proper CV beyond the current defaults in `scripts/train_models.py`.
+3. **Feature selection** — empirically pare `MODEL_FEATURE_COLUMNS` down to features that actually move metrics. The current 51-column matrix was hand-designed and includes columns that may carry no signal.
+4. **Missing feature verification** — audit gaps between the documented feature set and what's actually trained. The contract-detail booleans (`contract_is_written`, `contract_is_signed_by_both_parties`, `contract_specifies_deadline_or_term`, `contract_specifies_payment_amount`) are extracted by the LLM but absent from `RAW_MODEL_FEATURE_COLUMNS`; decide whether to add them back or remove them from the schema.
+5. **Decide on the `HybridCaseIndex.reranker` slot** — wired but unused. Either plug in a cross-encoder reranker or drop the slot.
 
 Data collection (enumeration, download, OCR, label/feature extraction) and deployment to AWS ECS continue in parallel as the dataset grows, but they're no longer the gating items.
 
@@ -341,16 +348,21 @@ python scripts/build_retrieval_index.py
 
 ### Counterfactual Analysis
 
-Given a case's feature vector, the counterfactual module:
+Given a case's feature vector, the counterfactual module runs a curated 28-feature perturbation pass — only features a litigant can plausibly change (evidence existence, argument content, pre-filing conduct, representation, contract presence, third-party valuation, and witness count). Excluded: case-structure metadata, opposing-party choices, claim-category, jurisdictional facts, and damages composition (rationale in `counterfactual/CLAUDE.md`).
 
-1. Runs the original features through both models to get baseline predictions
-2. For each perturbable feature, generates a meaningful change (e.g., evidence strength 3 → 4, contract present false → true)
-3. Re-runs the modified features through both models
-4. Reports the delta: "If evidence strength changed from 3 to 5, win probability would increase by 12.3%"
+How it works:
 
-Feature perturbations respect constraints — evidence strength stays between 1–5, monetary amounts can't go negative, booleans flip between 0 and 1. Results are sorted by impact magnitude so the most influential changes appear first.
+1. Predict the baseline win probability and expected award.
+2. Build one batched DataFrame with one row per perturbation (each row = base row with one column flipped) and call `predict_proba` / `predict` once each — collapses what would be ~56 sklearn calls into 2.
+3. For each result, compute the delta and tag it `helpful` (toward a state the user can reach: false → true, or +1 witness) or `harmful` (true → false on something they already have — surfaced as "load-bearing").
+4. `feat_witness_count` steps `+1` up to a cap of 5, with early-stop when successive deltas drop below 0.005pp.
+5. Sort by `|win_prob_delta|` and return the full list.
 
-Custom perturbations can also be passed explicitly via the API.
+`select_top_recommendations(top_n=5)` picks what to surface to the user: helpful flips by default, but if any of the overall top-5 by magnitude is harmful (a high-impact "this is critical to your case" finding), include it too.
+
+`format_for_llm` renders the top-5 as advice-ready prose with friendly names — this gets injected into the similarity-advice and judge prompts so the LLM grounds its narrative in the same numbers the structured response carries.
+
+Custom perturbations can be passed explicitly via the `/counterfactual` API; they are clamped to the declared `FEATURE_CONSTRAINTS`.
 
 ### API
 

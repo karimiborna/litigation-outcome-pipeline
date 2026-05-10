@@ -19,7 +19,8 @@ Inference service for serving predictions, retrievals, and counterfactual analys
 | POST | `/predict` | Single case prediction |
 | POST | `/predict/batch` | Batch predictions, up to 50 cases |
 | POST | `/similar` | Find similar historical cases |
-| POST | `/counterfactual` | Feature perturbation analysis |
+| POST | `/counterfactual` | Feature perturbation analysis (returns the full sorted list; top-5 selection lives in the LexRatio path) |
+| POST | `/analyze`, `/api/analyze-lexratio` | LexRatio frontend flow — runs prediction, RAG, and counterfactual analysis in one call. The response includes a structured `top_recommendations: list[CounterfactualItem]`, and the LLM `advice` references those same top-5 perturbations by friendly name. |
 
 ## Model Loading
 
