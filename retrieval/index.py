@@ -19,11 +19,16 @@ import logging
 from pathlib import Path
 from dataclasses import dataclass
 from collections import defaultdict
-from typing import Any
+from typing import Any, Iterable, Sequence
 
 import numpy as np
 import faiss
 from rank_bm25 import BM25Okapi
+
+
+import torch
+from sentence_transformers import CrossEncoder
+
 
 from retrieval.config import RetrievalConfig
 from retrieval.embeddings import EmbeddingModel
@@ -165,7 +170,107 @@ class RRF:
 
         return sorted(scores.items(), key=lambda x: x[1], reverse=True)
 
+# =========================================================
+# Reranking
+# =========================================================
 
+@dataclass
+class RerankResult:
+    document_id: str
+    score: float
+    original_score: float
+
+
+class CrossEncoderReranker:
+    """
+    Cross-encoder reranker for hybrid retrieval pipelines.
+
+    Re-scores retrieved documents using a query-document pair model.
+
+    Recommended models:
+      - "BAAI/bge-reranker-base"
+      - "BAAI/bge-reranker-large"
+      - "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    """
+
+    def __init__(
+        self,
+        model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        device: str | None = None,
+        batch_size: int = 16,
+    ):
+        self.model_name = model_name
+        self.batch_size = batch_size
+
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        self.device = device
+
+        self.model = CrossEncoder(
+            model_name,
+            device=device,
+            trust_remote_code=True,
+        )
+
+    def rerank(
+        self,
+        query: str,
+        results: Sequence,
+        top_k: int | None = None,
+    ):
+        """
+        Parameters
+        ----------
+        query:
+            User query
+
+        results:
+            List[RetrievalResult]
+
+        top_k:
+            Number of results to return after reranking
+
+        Returns
+        -------
+        List[RetrievalResult]
+        """
+
+        if not results:
+            return []
+
+        pairs = [
+            (query, r.document.text)
+            for r in results
+        ]
+
+        scores = self.model.predict(
+            pairs,
+            batch_size=self.batch_size,
+            show_progress_bar=False,
+        )
+
+        reranked = []
+
+        for result, score in zip(results, scores):
+            reranked.append(
+                RetrievalResult(
+                    document=result.document,
+                    score=float(score),
+                    source="rerank",
+                )
+            )
+
+        reranked.sort(key=lambda x: x.score, reverse=True)
+
+        if top_k is not None:
+            reranked = reranked[:top_k]
+
+        return reranked
+
+    def __str__(self):
+        return self.model_name
+    
 # =========================================================
 # HYBRID INDEX
 # =========================================================
@@ -174,7 +279,10 @@ class HybridCaseIndex:
 
     VERSION = 1
 
-    def __init__(self, embedding_model: EmbeddingModel, reranker=None):
+    def __init__(self, embedding_model: EmbeddingModel, reranker=CrossEncoderReranker(
+    "cross-encoder/ms-marco-MiniLM-L-6-v2"
+)
+):
         self.embedding_model = embedding_model
         self.reranker = reranker
 
@@ -203,20 +311,29 @@ class HybridCaseIndex:
         if not self.dense or not self.sparse:
             return []
 
-        dense = self.dense.search(text, k * 3)
-        sparse = self.sparse.search(text, k * 3)
+        dense = self.dense.search(text, k * 5)
+        sparse = self.sparse.search(text, k * 5)
 
         fused = RRF().fuse(dense, sparse)
 
-        return [
+        initial = [
             RetrievalResult(
                 document=self.store.docs[i],
                 score=score,
                 source="fusion",
             )
-            for i, score in fused[:k]
+            for i, score in fused[: k * 3]
         ]
 
+        if self.reranker:
+            return self.reranker.rerank(
+                query=text,
+                results=initial,
+                top_k=k,
+            )
+        
+
+        return initial[:k]
     # -------------------------
     # SAVE
     # -------------------------

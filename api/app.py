@@ -394,7 +394,7 @@ async def _build_rag_context(
             "advice_evaluation": None,
             "top_recommendations": top_results,
         }
-
+    
     results = app_state.case_index.query(case_text, k=5)
     similar_cases = [
         SimilarCaseItem(
