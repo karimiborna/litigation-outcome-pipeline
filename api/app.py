@@ -241,13 +241,16 @@ async def _build_similarity_advice(
             content = resp.json()["choices"][0]["message"]["content"]
 
         parsed = _parse_json_response(content)
-        return (
-            parsed.get("comparison_insights", "Comparison analysis was unavailable."),
-            parsed.get(
-                "advice",
-                "Focus on improving the strength of the evidence and the clarity of the claim presentation.",
-            ),
-        )
+        insights = parsed.get("comparison_insights")
+        advice = parsed.get("advice")
+        if not isinstance(insights, str) or not isinstance(advice, str):
+            logger.warning(
+                "LLM returned non-string advice fields (insights=%s, advice=%s); using fallback",
+                type(insights).__name__,
+                type(advice).__name__,
+            )
+            return _fallback_similarity_advice(best_cases)
+        return insights, advice
     except Exception:
         logger.exception("RAG advice generation failed; using fallback advice")
         return _fallback_similarity_advice(best_cases)
