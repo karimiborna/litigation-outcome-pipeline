@@ -134,7 +134,7 @@ def build_similarity_advice_prompt(
         "<brief description of how the best historical cases compare to the new case>,\n"
         '  "advice": <concise practical advice for the plaintiff that explicitly '
         "references the top-5 perturbations and reconciles them with the retrieved "
-        "examples>\n"
+        "examples, in plain text>\n"
         "}\n"
     )
     user_content += "\n\n" + "\n".join(case_sections)

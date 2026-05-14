@@ -305,20 +305,6 @@ def test_select_top_recommendations_helpful_only_by_default():
     assert all(r.direction == "helpful" for r in top)
 
 
-def test_select_top_recommendations_admits_harmful_when_high_magnitude():
-    """If a harmful flip ranks in the overall top-N, it's surfaced."""
-    results = [
-        _make_result("loadbearing", 0.30, "harmful"),
-        _make_result("a", 0.20, "helpful"),
-        _make_result("b", 0.15, "helpful"),
-        _make_result("c", 0.10, "helpful"),
-        _make_result("d", 0.05, "helpful"),
-        _make_result("e", 0.04, "helpful"),
-    ]
-    top = select_top_recommendations(results, top_n=5)
-    assert any(r.feature_name == "loadbearing" for r in top)
-    assert top[0].feature_name == "loadbearing"
-
 
 def test_select_top_recommendations_empty_input():
     assert select_top_recommendations([]) == []

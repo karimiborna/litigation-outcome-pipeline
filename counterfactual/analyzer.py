@@ -151,7 +151,7 @@ def format_for_llm(results: list[CounterfactualResult]) -> str:
         name = FEATURE_DISPLAY_NAMES.get(r.feature_name, r.feature_name)
         state = _state_phrase(r.feature_name, r.original_value, r.new_value)
         deltas = _delta_phrase(r.win_prob_delta, r.monetary_delta)
-        tag = "actionable" if r.direction == "helpful" else "load-bearing — keep this"
+        tag = "actionable" if r.direction == "helpful" else "nothing"
         lines.append(f"{idx}. {name} — {state}; {deltas}. [{tag}]")
     return "\n".join(lines)
 
@@ -233,13 +233,10 @@ def select_top_recommendations(
     if not results:
         return []
 
-    by_magnitude = sorted(results, key=lambda r: abs(r.win_prob_delta), reverse=True)
-    overall_top = by_magnitude[:top_n]
+    by_magnitude = sorted(results, key=lambda r: r.win_prob_delta, reverse=True)
 
-    if any(r.direction == "harmful" for r in overall_top):
-        return overall_top
-
-    helpful = [r for r in by_magnitude if r.direction == "helpful"]
+    helpful = [r for r in by_magnitude if r.win_prob_delta > 0]
+    logger.warning(f"name: {[[r.feature_name, r.win_prob_delta] for r in helpful[:top_n]]}")
     return helpful[:top_n]
 
 

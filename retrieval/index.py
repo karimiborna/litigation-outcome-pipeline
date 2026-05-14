@@ -279,9 +279,8 @@ class HybridCaseIndex:
 
     VERSION = 1
 
-    def __init__(self, embedding_model: EmbeddingModel, reranker=CrossEncoderReranker(
-    "cross-encoder/ms-marco-MiniLM-L-6-v2"
-)
+    def __init__(self, embedding_model: EmbeddingModel, reranker=None
+
 ):
         self.embedding_model = embedding_model
         self.reranker = reranker
