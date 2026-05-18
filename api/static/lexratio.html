@@ -316,6 +316,7 @@ function renderResult(r, amount) {
   var award  = r.expected_award || 0;
   var conf   = r.confidence || 'medium';
   var amtNum = parseFloat(amount) || 0;
+  if (amtNum > 0 && award > amtNum) { award = amtNum; }
   var recovery = (amtNum > 0 && award > 0) ? Math.round((award / amtNum) * 100) + '%' : '—';
   var awardStr = award > 0 ? '$' + Math.round(award).toLocaleString() : '—';
   var barColor = wp >= 65 ? 'var(--color-text-success)' : wp >= 40 ? 'var(--color-text-warning)' : 'var(--color-text-danger)';
@@ -345,9 +346,7 @@ function renderResult(r, amount) {
   }).join('');
   var bestCasesHtml = (r.best_cases || []).slice(0, 3).map(function(c) {
     var outcome = c.outcome ? ' · ' + c.outcome.replace(/_/g, ' ') : '';
-    return '<div>' + escapeHtml(c.case_number) + ' · ' +
-      Math.round((c.similarity_score || 0) * 100) + '% similar' +
-      outcome + '</div>';
+    return '<div>' + escapeHtml(c.case_number) + outcome + '</div>';
   }).join('');
   var judge = r.advice_evaluation || null;
   var judgeHtml = judge
@@ -397,9 +396,7 @@ function renderResult(r, amount) {
       '<div class="section-cap">VII. Counsel\'s note</div>' +
       '<div class="advice-entry">' + escapeHtml(r.advice) + '</div>' +
       comparisonHtml
-    : '') +
-
-    '<div class="disclaimer">This analysis is AI-generated for informational purposes only and does not constitute legal advice. Actual outcomes depend on the specific facts presented, available evidence, and judicial discretion. Consult a licensed attorney before making legal decisions.</div>';
+    : '');
 
   setTimeout(function() {
     var f = document.getElementById('mfill');
