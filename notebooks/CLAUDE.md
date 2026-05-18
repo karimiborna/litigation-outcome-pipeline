@@ -1,7 +1,7 @@
 # notebooks/
 
 Four notebooks:
-- `colab_gpu_extraction.ipynb` — full extraction pipeline on Colab GPU (steps 1–6)
+- `colab_gpu_extraction.ipynb` — full extraction pipeline (steps 1–6). Auto-detects runtime: Colab T4 (CUDA + bitsandbytes), Apple Silicon Mac (MLX via `mlx-vlm`), or generic CUDA host like RunPod (CUDA + bitsandbytes + rclone-mounted Drive).
 - `local_pdf_pipeline.ipynb` — local-only steps 1–2 (download + PyMuPDF) on M4 via Drive Desktop sync, used when Cloudflare blocks the Colab IP range
 - `ernesto_ML.ipynb` — exploratory ML training and analysis (local)
 - `scrape_new_cases.ipynb` — local-only probing for new SF court case numbers
@@ -14,32 +14,27 @@ Local ML training notebook. Loads `dataset.csv`, trains classifier and regressor
 
 ## colab_gpu_extraction.ipynb
 
-End-to-end pipeline notebook designed for Google Colab (T4 GPU runtime). Handles:
+Tri-mode GPU + LLM extraction notebook. Cell 1 sets `BACKEND = "mlx"` on Apple Silicon (`platform.machine() == "arm64"`), or `BACKEND = "cuda"` on Colab and any generic Linux CUDA host (detected via `nvidia-smi`); Cells 3, 7, 9, and 15 branch on `BACKEND` and on the `IS_*` flags. PDF downloads and PyMuPDF text extraction are not in this notebook — they run on the laptop via `local_pdf_pipeline.ipynb` because Cloudflare blocks Colab IPs from `webapps.sftc.org`. This notebook reads from the Drive-synced `pdfs/` and `extracted/` folders and handles:
 
-1. **PDF download** from SF Superior Court API (`webapps.sftc.org`) using session IDs
-2. **Text extraction** via tiered strategy:
-   - PyMuPDF (free, instant) for PDFs with selectable text
-   - Qwen2-VL-7B 4-bit on the Colab T4 GPU for scanned pages
-3. **Label extraction** via GPT-4o-mini — win/loss/partial_win/dismissed/settled, amounts, etc.
-   - Uses `response_format={"type": "json_object"}` for guaranteed valid JSON
-   - Smart truncation keeps first 1/3 + last 2/3 of long docs (rulings are at the end)
-   - Saves per-case JSON files to `labels/` for team deduplication, merges into `labels.json`
-4. **Feature extraction** via GPT-4o-mini (Step 6 / Cell 15) — ~40 existence-based booleans per case using the v2 `FeatureExtractor` / `LLMFeatures` schema.
+1. **Find scanned PDFs** — globs `PDF_DIR` for whitelisted doc types lacking a `.txt` companion in `OUTPUT_DIR` and builds `needs_gpu`.
+2. **Vision OCR** via Qwen2-VL-7B 4-bit. On Colab uses `Qwen/Qwen2-VL-7B-Instruct` + bitsandbytes; on Mac uses `mlx-community/Qwen2-VL-7B-Instruct-4bit` + `mlx-vlm`. Targeted prompt for SC-100 claim docs that skips bilingual boilerplate; generic prompt otherwise. Pages with no case data are dropped.
+3. **Label extraction** via GPT-4o-mini — win/loss/partial_win/dismissed/settled, amounts, dates. Output merged into `{DRIVE_DIR}/labels.json`.
+4. **Feature extraction** via GPT-4o-mini — ~40 existence-based booleans per case using the v2 `FeatureExtractor` / `LLMFeatures` schema.
    - Builds `ProcessedCase` per case from the Drive-mounted extracted txts
-   - Excludes label docs (`JUDGMENT`, `ORDER`, `DISMISSAL`, `STIPULATION`, `Notice_of_Entry_of_Judgment`, `COURT_JUDGMENT`) to preserve the leakage firewall
+   - Excludes label docs via `features.labels._is_label_doc` (`JUDGMENT`, `ORDER`, `DISMISSAL`, `STIPULATION`, `Notice_of_Entry_of_Judgment`, `COURT_JUDGMENT`) to preserve the leakage firewall
    - Auto-detects `user_side` per case: `"defendant"` if a `DEFENDANT_S_CLAIM` txt exists, else `"plaintiff"`
    - Writes per-case `FeatureVector` JSONs to `{DRIVE_DIR}/features_cache/` (content-hashed filenames)
-   - Reuses the OpenAI key entered in Step 5, or re-prompts if Step 5 was skipped
-   - Supports the same `MY_WORKER`/`TOTAL_WORKERS` stride sharding as earlier steps
+   - Reuses the OpenAI key entered in Step 4, or re-prompts if Step 4 was skipped
+   - Supports `MY_WORKER`/`TOTAL_WORKERS` stride sharding for the team
+5. **Results** — prints summary, bundles `extracted/` to a zip, downloads it.
 
 ### Key details
 
-- Uses `valid_cases.json` from `scraper/state/` as the case list
-- **800 total valid cases** in `valid_cases.json`
-- Worker sharding (`MY_WORKER / TOTAL_WORKERS`) splits cases across team members
+- Reads PDFs + existing PyMuPDF txts from the shared Drive folder (populated by `local_pdf_pipeline.ipynb`)
+- Worker sharding (`MY_WORKER / TOTAL_WORKERS`) splits feature-extraction work across team members
 - All steps are idempotent — checks for existing outputs before re-processing
-- Outputs: `.txt` files in `extracted/`, per-case JSONs in `labels/`, merged `labels.json`
-- Google Drive mount is default for persistence between Colab sessions
+- Outputs: `.txt` files in `extracted/`, merged `labels.json` at `{DRIVE_DIR}/labels.json`, per-case feature JSONs in `features_cache/`
+- Google Drive mount is required (no local-FS fallback)
 
 ### Worker assignments
 
@@ -61,15 +56,67 @@ Only these types are downloaded/extracted (procedural docs skipped):
 
 ### Dependencies
 
-- `pymupdf` (fitz), `requests`, `openai`
-- GPU path: `transformers`, `accelerate`, `bitsandbytes`, `qwen-vl-utils`
-- Repo must be pip-installable (`pip install -e .`) for `scraper.config`, `scraper.court_api`, `features.labels`, etc. — the notebook imports from these directly
+- Common: `pymupdf` (fitz), `requests`, `openai`, `transformers>=4.45`, `Pillow`
+- Colab/CUDA path: `accelerate`, `bitsandbytes>=0.46.1`, `qwen-vl-utils`
+- Mac/MLX path: `mlx-vlm>=0.1.0` (pulls in `mlx`, `mlx-lm`)
+- Repo must be pip-installable (`pip install -e .`) for `scraper.config`, `scraper.court_api`, `features.labels`, etc. — the notebook imports from these directly. On Mac the editable install lives in conda env `ML`; on Colab Cell 3 runs `pip install -e {REPO_DIR}` after cloning.
 
 ### Known issues
 
-- GPU vision (Qwen2-VL-7B 4-bit via `bitsandbytes`) is the active fallback for scanned PDFs; PyMuPDF handles e-filed PDFs with a text layer. The earlier NVIDIA-API path has been removed.
-- `bitsandbytes` 4-bit loading is CUDA-only — Step 3/4 will not run on Apple Silicon (MPS) without swapping the loader to MLX or `bfloat16` unquantized.
-- Final zip download assumes Colab environment (`google.colab.files`).
+- GPU vision (Qwen2-VL-7B 4-bit) is the active fallback for scanned PDFs; PyMuPDF handles e-filed PDFs with a text layer. The earlier NVIDIA-API path has been removed.
+- The Colab T4 has 16 GB VRAM; the M4 Pro has 24 GB unified memory; an RTX 4090 has 24 GB. All fit Qwen2-VL-7B 4-bit comfortably.
+- `mlx-vlm.generate` returns a `GenerationResult` in newer versions and a string in older ones; `extract_page_mlx` normalizes both.
+- Final zip download assumes Colab environment — wrapped in `if IS_COLAB:` so the Mac and RunPod paths skip it (outputs already live in the synced Drive folder).
+
+## Generic CUDA / RunPod path
+
+When Colab's monthly compute units are exhausted and the M4 MLX run is too slow, run on a rented RunPod GPU. Cell 1 detects this with `IS_GENERIC_CUDA` (Linux + `nvidia-smi` works + not Colab) and Cell 3 expects Drive to already be mounted at `/workspace/drive/litigation-pipeline` via rclone.
+
+Cost reference (May 2026): RTX 4090 24 GB on Community Cloud is ~$0.34/hr. A full 2,425-PDF run takes ~2-4 hours = under $2. Per-second billing means you stop paying the moment the run ends.
+
+### One-time rclone setup (do once on Mac)
+
+1. `brew install rclone`
+2. `rclone config` → `n` (new) → name `drive` → storage `drive` (Google Drive) → leave `client_id`/`client_secret` blank → scope `1` (full access) → leave `service_account_file` blank → `n` to advanced → `y` to auto config (browser OAuth as the team Drive account) → `n` to Shared Drive → `y` to confirm
+3. Verify: `rclone lsd drive:litigation-pipeline` should list `pdfs`, `extracted`, etc.
+4. The OAuth token now lives in `~/.config/rclone/rclone.conf` — keep this file safe; it grants Drive access until revoked from <https://myaccount.google.com/connections>.
+
+### Per-pod setup (~5 min)
+
+1. RunPod dashboard → Deploy a Pod
+   - **GPU**: RTX 4090 24 GB (Community Cloud)
+   - **Template**: `runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04`
+   - **Container disk**: 30 GB
+   - **Volume disk**: 0 GB (Drive mount handles persistence)
+   - Expose port 8888 for Jupyter Lab
+2. Click "Connect → Connect to Jupyter Lab" once the pod is running.
+3. In Jupyter Lab terminal:
+   ```bash
+   curl https://rclone.org/install.sh | sudo bash
+   ```
+4. Upload your Mac's `~/.config/rclone/rclone.conf` via the Jupyter Lab file browser (drag-and-drop into `/workspace/`), then move it:
+   ```bash
+   mkdir -p ~/.config/rclone && mv /workspace/rclone.conf ~/.config/rclone/
+   ```
+5. Mount Drive in the background:
+   ```bash
+   mkdir -p /workspace/drive
+   rclone mount drive: /workspace/drive --vfs-cache-mode writes --daemon --log-file /tmp/rclone.log
+   ```
+6. Verify the mount: `ls /workspace/drive/litigation-pipeline/pdfs | head -3`
+7. Open `notebooks/colab_gpu_extraction.ipynb` in Jupyter Lab and run from Cell 1. Cell 1 prints `Backend: CUDA — NVIDIA GeForce RTX 4090 (24.0 GB) [Generic CUDA (e.g. RunPod)]`.
+
+### Per-run teardown
+
+- Outputs sync to Drive in real time via `rclone mount` writethrough — no manual upload needed.
+- Stop or terminate the pod from the RunPod dashboard. **Terminate** is free (deletes the pod entirely); **Stop** keeps the disk billed at ~$0.10/GB/mo.
+- Mac's Drive Desktop syncs the new `extracted/` files within ~1 minute.
+
+### Notes
+
+- rclone mount writes are throttled by Google Drive's API rate limits (~10 writes/sec sustained). Fine for the OCR loop's slow per-page output; would matter if a future change tries to batch-write thousands of small files.
+- If `rclone mount` fails with "fuse: device not found", install fuse first: `apt-get update && apt-get install -y fuse3`.
+- Don't commit `rclone.conf` to git — the OAuth refresh token is sensitive.
 
 ## local_pdf_pipeline.ipynb
 
@@ -86,7 +133,7 @@ Cloudflare blocks SF court (`webapps.sftc.org`) requests from Colab's IP range b
 3. Open `local_pdf_pipeline.ipynb`, edit `DRIVE_PATH` if your email differs, run cell-3 (setup) — it prints how many PDFs are already in Drive.
 4. Run cell-5 (download). When prompted, paste a fresh SessionID from your browser. The skip-existing check covers cases already on Drive (no re-download of the 800 CSM25 cases from prior Colab runs).
 5. Run cell-7 (PyMuPDF). Text files land in `<DRIVE_PATH>/extracted/`. Scanned PDFs (<100 chars) get queued for the GPU step.
-6. Switch to `colab_gpu_extraction.ipynb` and run from **cell-9 (Step 3 — Load Vision Model)** onward — Colab sees the same files via Drive mount.
+6. Switch to `colab_gpu_extraction.ipynb` and run all cells — Colab sees the same files via Drive mount.
 
 ### Handoff handling
 
